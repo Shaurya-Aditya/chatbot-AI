@@ -1,0 +1,14 @@
+export type MessageType = "text" | "image" | "file"
+
+export type MessageRole = "user" | "assistant" | "system"
+
+export interface Message {
+  id: string
+  content: string
+  type: MessageType
+  role: MessageRole
+  timestamp: Date
+  imageUrl?: string
+  fileUrl?: string
+  fileName?: string
+}

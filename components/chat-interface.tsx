@@ -1,0 +1,193 @@
+"use client"
+
+import type React from "react"
+
+import { useState, useRef, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { Send, Mic, Paperclip, Loader2 } from "lucide-react"
+import type { Message } from "@/types/message"
+import type { SystemStatus } from "@/types/system-status"
+import { ChatMessage } from "@/components/chat-message"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { useToast } from "@/hooks/use-toast"
+
+interface ChatInterfaceProps {
+  onStatusChange: (status: SystemStatus) => void
+}
+
+export function ChatInterface({ onStatusChange }: ChatInterfaceProps) {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "1",
+      content: "Hello! I'm your AI assistant. How can I help you today?",
+      type: "text",
+      role: "assistant",
+      timestamp: new Date(),
+    },
+  ])
+  const [input, setInput] = useState("")
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [detailedMode, setDetailedMode] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const { toast } = useToast()
+
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  const handleSendMessage = async () => {
+    if (!input.trim() || isProcessing) return
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content: input,
+      type: "text",
+      role: "user",
+      timestamp: new Date(),
+    }
+
+    setMessages((prev) => [...prev, userMessage])
+    setInput("")
+    setIsProcessing(true)
+    onStatusChange({ status: "processing", message: "Processing request..." })
+
+    try {
+      // Check if the message is requesting image generation
+      const isImageRequest =
+        /create|generate|draw|show me|design|make|visualize/i.test(input) &&
+        /image|picture|logo|graph|chart|diagram|illustration/i.test(input)
+
+      // Simulate API call delay
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+
+      let responseMessage: Message
+
+      if (isImageRequest) {
+        // Simulate DALL-E image generation
+        responseMessage = {
+          id: Date.now().toString(),
+          content: "I've generated this image based on your request:",
+          type: "image",
+          role: "assistant",
+          timestamp: new Date(),
+          imageUrl: "/placeholder.svg?height=512&width=512",
+        }
+      } else {
+        // Simulate text response
+        const shortResponse = "Here's a concise answer to your question."
+        const longResponse =
+          "Here's a detailed response that provides comprehensive information about your query. I've included additional context and explanations to ensure you have a complete understanding of the topic."
+
+        responseMessage = {
+          id: Date.now().toString(),
+          content: detailedMode ? longResponse : shortResponse,
+          type: "text",
+          role: "assistant",
+          timestamp: new Date(),
+        }
+      }
+
+      setMessages((prev) => [...prev, responseMessage])
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to process your request. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsProcessing(false)
+      onStatusChange({ status: "connected", message: "System ready" })
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      handleSendMessage()
+    }
+  }
+
+  const handleAttachFile = () => {
+    toast({
+      title: "Attach file",
+      description: "You can reference uploaded files in your conversation.",
+    })
+  }
+
+  const handleVoiceInput = () => {
+    toast({
+      title: "Voice input",
+      description: "Voice input feature is coming soon.",
+    })
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-w-2 scrollbar-track-blue-lighter scrollbar-thumb-blue scrollbar-thumb-rounded">
+        {messages.map((message) => (
+          <ChatMessage key={message.id} message={message} />
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="border-t border-border p-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-2">
+            <Switch id="detailed-mode" checked={detailedMode} onCheckedChange={setDetailedMode} />
+            <Label htmlFor="detailed-mode" className="text-sm">
+              Detailed responses
+            </Label>
+          </div>
+
+          {isProcessing && (
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              <span>Processing...</span>
+            </div>
+          )}
+        </div>
+
+        <div className="relative">
+          <Textarea
+            placeholder="Type your message..."
+            className="min-h-[80px] resize-none pr-24"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={isProcessing}
+          />
+
+          <div className="absolute right-3 bottom-3 flex items-center space-x-2">
+            <Button variant="ghost" size="icon" onClick={handleAttachFile} disabled={isProcessing} title="Attach file">
+              <Paperclip className="h-4 w-4" />
+              <span className="sr-only">Attach file</span>
+            </Button>
+
+            <Button variant="ghost" size="icon" onClick={handleVoiceInput} disabled={isProcessing} title="Voice input">
+              <Mic className="h-4 w-4" />
+              <span className="sr-only">Voice input</span>
+            </Button>
+
+            <Button
+              onClick={handleSendMessage}
+              disabled={!input.trim() || isProcessing}
+              className="rounded-full"
+              size="icon"
+            >
+              <Send className="h-4 w-4" />
+              <span className="sr-only">Send</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
