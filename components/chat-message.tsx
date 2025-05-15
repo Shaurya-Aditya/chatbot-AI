@@ -165,7 +165,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
         )}>
           <div className={cn(
             "rounded-2xl px-4 py-2 text-sm",
-            isUser ? "bg-primary" : "bg-muted",
+            isUser ? "bg-primary text-white dark:bg-primary dark:text-white" : "bg-muted text-foreground dark:bg-muted dark:text-foreground",
             isSystem && "bg-yellow-100 dark:bg-yellow-900 text-yellow-900 dark:text-yellow-100"
           )}>
             {renderMessageContent()}
