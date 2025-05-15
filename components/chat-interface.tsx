@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Send, Mic, Paperclip, Loader2, Menu, File, FileText, FileSpreadsheet } from "lucide-react"
+import { Send, Mic, Paperclip, Loader2, Menu } from "lucide-react"
 import type { Message } from "@/types/message"
 import type { SystemStatus } from "@/types/system-status"
 import { ChatMessage } from "@/components/chat-message"
@@ -31,10 +31,7 @@ export function ChatInterface({
   const [input, setInput] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [detailedMode, setDetailedMode] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [filePreview, setFilePreview] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
   const scrollToBottom = () => {
@@ -47,94 +44,43 @@ export function ChatInterface({
     scrollToBottom()
   }, [messages])
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    // Validate file type
-    const validFileTypes = [
-      "application/pdf",
-      "text/plain",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ]
-
-    if (!validFileTypes.includes(file.type)) {
-      toast({
-        title: "Invalid file type",
-        description: "Only PDF, TXT, and DOCX files are supported.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setSelectedFile(file)
-    setFilePreview(URL.createObjectURL(file))
-  }
-
-  const handleRemoveFile = () => {
-    if (filePreview) {
-      URL.revokeObjectURL(filePreview)
-    }
-    setSelectedFile(null)
-    setFilePreview(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
-    }
-  }
-
   const handleSendMessage = async () => {
-    if ((!input.trim() && !selectedFile) || isProcessing) return
+    if (!input.trim() || isProcessing) return
 
-    let messageContent = input.trim()
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: messageContent,
-      type: selectedFile ? "file" : "text",
+      content: input,
+      type: "text",
       role: "user",
       timestamp: new Date(),
-      ...(selectedFile && {
-        file: {
-          name: selectedFile.name,
-          type: selectedFile.type,
-          size: selectedFile.size,
-          url: filePreview!,
-        }
-      })
     }
 
     setMessages((prev) => [...prev, userMessage])
     setInput("")
-    setSelectedFile(null)
-    setFilePreview(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
-    }
     setIsProcessing(true)
     onStatusChange({ status: "processing", message: "Processing request..." })
 
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      // Send the message to the backend API
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [...messages, userMessage] }),
+      })
 
-      let responseMessage: Message
-      if (selectedFile?.type === "application/pdf") {
-        responseMessage = {
-          id: Date.now().toString(),
-          content: `I've received your PDF "${selectedFile.name}"${messageContent ? ` along with your message: "${messageContent}"` : ""}. I can help you analyze or work with this document. What would you like to know about it?`,
-          type: "text",
-          role: "assistant",
-          timestamp: new Date(),
-        }
-      } else {
-        responseMessage = {
-          id: Date.now().toString(),
-          content: detailedMode 
-            ? "Here's a detailed response that provides comprehensive information about your query."
-            : "Here's a concise answer to your question.",
-          type: "text",
-          role: "assistant",
-          timestamp: new Date(),
-        }
+      if (!res.ok) throw new Error("API error")
+
+      // If your backend streams, you may want to handle streaming here.
+      // For now, we'll assume a simple JSON response.
+      const data = await res.json()
+
+      const responseMessage: Message = {
+        id: Date.now().toString(),
+        content: data.content || "No response from AI.",
+        type: data.type || "text",
+        role: "assistant",
+        timestamp: new Date(),
+        imageUrl: data.imageUrl,
       }
 
       setMessages((prev) => [...prev, responseMessage])
@@ -158,7 +104,10 @@ export function ChatInterface({
   }
 
   const handleAttachFile = () => {
-    fileInputRef.current?.click()
+    toast({
+      title: "Attach file",
+      description: "You can reference uploaded files in your conversation.",
+    })
   }
 
   const handleVoiceInput = () => {
@@ -220,29 +169,9 @@ export function ChatInterface({
           </div>
         )}
 
-        {selectedFile && (
-          <div className="max-w-3xl mx-auto w-full mb-2 p-2 bg-muted rounded-lg flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <File className="h-4 w-4 text-blue-500" />
-              <span className="text-sm font-medium">{selectedFile.name}</span>
-              <span className="text-xs text-muted-foreground">
-                ({formatFileSize(selectedFile.size)})
-              </span>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRemoveFile}
-              className="h-6 px-2"
-            >
-              Remove
-            </Button>
-          </div>
-        )}
-
         <div className="max-w-3xl mx-auto w-full relative">
           <Textarea
-            placeholder={selectedFile ? "Add a message with your file..." : "Type your message..."}
+            placeholder="Type your message..."
             className="min-h-[80px] resize-none pr-24 rounded-2xl"
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -251,20 +180,7 @@ export function ChatInterface({
           />
 
           <div className="absolute right-3 bottom-3 flex items-center space-x-2">
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept=".pdf,.txt,.docx"
-              onChange={handleFileChange}
-            />
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={handleAttachFile} 
-              disabled={isProcessing} 
-              title="Attach file"
-            >
+            <Button variant="ghost" size="icon" onClick={handleAttachFile} disabled={isProcessing} title="Attach file">
               <Paperclip className="h-4 w-4" />
               <span className="sr-only">Attach file</span>
             </Button>
@@ -276,7 +192,7 @@ export function ChatInterface({
 
             <Button
               onClick={handleSendMessage}
-              disabled={(!input.trim() && !selectedFile) || isProcessing}
+              disabled={!input.trim() || isProcessing}
               className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground dark:bg-[#2d2d2d] dark:hover:bg-[#3d3d3d]"
               size="icon"
             >
@@ -288,12 +204,4 @@ export function ChatInterface({
       </div>
     </div>
   )
-}
-
-const formatFileSize = (bytes: number) => {
-  if (bytes === 0) return "0 Bytes"
-  const k = 1024
-  const sizes = ["Bytes", "KB", "MB", "GB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
 }

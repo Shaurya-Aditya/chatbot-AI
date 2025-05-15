@@ -1,8 +1,9 @@
-import { openai } from "@ai-sdk/openai"
-import { streamText } from "ai"
+import { OpenAI } from "openai"
 
 // Allow responses up to 30 seconds
 export const maxDuration = 30
+
+const openai = new OpenAI()
 
 export async function POST(req: Request) {
   try {
@@ -28,13 +29,20 @@ export async function POST(req: Request) {
       )
     }
 
-    // For text responses, use the AI SDK to stream the response
-    const result = streamText({
-      model: openai("gpt-4o"),
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
       messages,
+      stream: false,
     })
 
-    return result.toDataStreamResponse()
+    return new Response(
+      JSON.stringify({
+        content: completion.choices[0]?.message?.content || "No response from AI.",
+        type: "text",
+        role: "assistant",
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    )
   } catch (error) {
     console.error("Error in chat API:", error)
     return new Response(JSON.stringify({ error: "Failed to process your request" }), { status: 500 })
