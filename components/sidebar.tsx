@@ -8,6 +8,7 @@ import { Search, MoreHorizontal, Check, X, Menu, Plus } from "lucide-react"
 import type { FileCategory } from "@/types/file"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { useRouter } from "next/navigation"
 
 interface SidebarProps {
   isOpen: boolean
@@ -33,6 +34,7 @@ export function Sidebar({
   const [searchQuery, setSearchQuery] = useState("")
   const [editingThread, setEditingThread] = useState<{ id: string; name: string } | null>(null)
   const [newThreadName, setNewThreadName] = useState("")
+  const router = useRouter()
 
   // Filter threads based on search query
   const filteredThreads = threads.filter(thread => 
@@ -107,12 +109,14 @@ export function Sidebar({
                     <TabsTrigger 
                       value="documents" 
                       className="w-full justify-start rounded-none border-b border-border dark:border-white/10 data-[state=active]:border-b-0 text-foreground dark:text-white data-[state=active]:bg-background dark:data-[state=active]:bg-black hover:bg-accent dark:hover:bg-white/5 text-sm"
+                      onClick={() => router.push('/documents')}
                     >
                       Documents
                     </TabsTrigger>
                     <TabsTrigger 
                       value="upload" 
                       className="w-full justify-start rounded-none text-foreground dark:text-white data-[state=active]:bg-background dark:data-[state=active]:bg-black hover:bg-accent dark:hover:bg-white/5 text-sm"
+                      onClick={() => router.push('/upload')}
                     >
                       Upload
                     </TabsTrigger>

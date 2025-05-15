@@ -3,74 +3,137 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { File, FileText, FileSpreadsheet, MoreVertical, Trash2, FolderInput } from "lucide-react"
+import { File, FileText, FileSpreadsheet, MoreVertical, Trash2, FolderInput, Eye, Download } from "lucide-react"
 import type { FileCategory, FileItem, FileType } from "@/types/file"
 import { formatDistanceToNow } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
+import { Input } from "@/components/ui/input"
+import { Search } from "lucide-react"
 
 interface FileListProps {
   searchQuery: string
-  category: FileCategory | "all"
+  category?: FileCategory | "all"
 }
 
 export function FileList({ searchQuery, category }: FileListProps) {
   const [files, setFiles] = useState<FileItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [undownloadableIds, setUndownloadableIds] = useState<string[]>([])
   const { toast } = useToast()
+  const router = useRouter()
 
-  // Simulate fetching files from API
   useEffect(() => {
-    // In a real application, you would fetch files from your API
-    const mockFiles: FileItem[] = [
-      {
-        id: "1",
-        name: "Q1 Financial Report.pdf",
-        type: "pdf",
-        category: "financial",
-        size: 2.4,
-        uploadedAt: new Date(2023, 2, 15),
-      },
-      {
-        id: "2",
-        name: "Business Plan 2023.docx",
-        type: "docx",
-        category: "business",
-        size: 1.8,
-        uploadedAt: new Date(2023, 1, 10),
-      },
-      {
-        id: "3",
-        name: "Meeting Notes.txt",
-        type: "txt",
-        category: "business",
-        size: 0.3,
-        uploadedAt: new Date(2023, 3, 5),
-      },
-      {
-        id: "4",
-        name: "Personal Goals.docx",
-        type: "docx",
-        category: "personal",
-        size: 0.5,
-        uploadedAt: new Date(2023, 0, 20),
-      },
-      {
-        id: "5",
-        name: "Investment Strategy.pdf",
-        type: "pdf",
-        category: "financial",
-        size: 3.2,
-        uploadedAt: new Date(2023, 4, 8),
-      },
-    ]
-
-    setFiles(mockFiles)
+    async function fetchFiles() {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await fetch("/api/documents")
+        const data = await res.json()
+        if (!data.success) throw new Error(data.error || "Failed to fetch files")
+        const mapped: FileItem[] = (data.files || []).map((file: any) => ({
+          id: file.id,
+          name: file.filename || file.name || "Untitled",
+          type: (file.filename || file.name || "").split('.').pop() as FileType || "pdf",
+          size: file.bytes ? file.bytes : 0,
+          uploadedAt: file.created_at ? new Date(file.created_at * 1000) : new Date(),
+        }))
+        setFiles(mapped)
+      } catch (e: any) {
+        setError(e.message || "Unknown error")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchFiles()
   }, [])
 
-  const filteredFiles = files.filter((file) => {
-    const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCategory = category === "all" || file.category === category
-    return matchesSearch && matchesCategory
-  })
+  const handleView = (id: string) => {
+    router.push(`/documents/${id}`)
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`/api/documents/${id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || 'Failed to delete file')
+      setFiles(files.filter((file) => file.id !== id))
+      toast({
+        title: "File deleted",
+        description: "The file has been removed from your knowledge base.",
+      })
+    } catch (e: any) {
+      toast({
+        title: "Delete failed",
+        description: e.message || 'Could not delete file',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  const handleDownload = async (id: string) => {
+    try {
+      const res = await fetch(`/api/documents/${id}/download`)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 404 && data.error && data.error.includes('Download is not available')) {
+          toast({
+            title: "Download not available",
+            description: data.error,
+            variant: 'destructive',
+          })
+          setUndownloadableIds((prev) => [...prev, id])
+          return;
+        }
+        if (res.status === 400 && data.details && data.details.includes('Not allowed to download files of purpose: assistants')) {
+          toast({
+            title: "Download not allowed",
+            description: "Download is not available for files uploaded to the vector store.",
+            variant: 'destructive',
+          })
+          setUndownloadableIds((prev) => [...prev, id])
+          return;
+        }
+        throw new Error('Failed to download file')
+      }
+      const blob = await res.blob()
+      const disposition = res.headers.get('Content-Disposition')
+      let filename = 'document'
+      if (disposition) {
+        const match = disposition.match(/filename="(.+)"/)
+        if (match) filename = match[1]
+      }
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (e: any) {
+      toast({
+        title: "Download failed",
+        description: e.message || 'Could not download file',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleChangeCategory = (id: string, newCategory: FileCategory) => {
+    setFiles(files.map((file) => (file.id === id ? { ...file, category: newCategory } : file)))
+    toast({
+      title: "Category updated",
+      description: "The file category has been updated.",
+    })
+  }
 
   const getFileIcon = (fileType: FileType) => {
     switch (fileType) {
@@ -85,93 +148,66 @@ export function FileList({ searchQuery, category }: FileListProps) {
     }
   }
 
-  const handleDelete = (id: string) => {
-    setFiles(files.filter((file) => file.id !== id))
-    toast({
-      title: "File deleted",
-      description: "The file has been removed from your knowledge base.",
-    })
+  const filteredFiles = files.filter((file) => {
+    const searchTerm = (searchQuery || "").toLowerCase()
+    const matchesSearch = file.name.toLowerCase().includes(searchTerm) ||
+                         file.type.toLowerCase().includes(searchTerm)
+    return matchesSearch
+  })
+
+  if (loading) {
+    return <div className="text-center py-8 text-muted-foreground">Loading documents...</div>
   }
 
-  const handleChangeCategory = (id: string, newCategory: FileCategory) => {
-    setFiles(files.map((file) => (file.id === id ? { ...file, category: newCategory } : file)))
-    toast({
-      title: "Category updated",
-      description: "The file category has been updated.",
-    })
-  }
-
-  if (filteredFiles.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">No files found</p>
-      </div>
-    )
+  if (error) {
+    return <div className="text-center py-8 text-destructive">{error}</div>
   }
 
   return (
-    <div className="space-y-3">
-      {filteredFiles.map((file) => (
-        <div
-          key={file.id}
-          className="flex items-center p-3 rounded-md border border-border hover:bg-accent/50 transition-colors"
-        >
-          <div className="mr-3">{getFileIcon(file.type)}</div>
-
-          <div className="flex-1 min-w-0">
-            <p className="font-medium truncate">{file.name}</p>
-            <div className="flex items-center text-xs text-muted-foreground">
-              <span className="capitalize">{file.category}</span>
-              <span className="mx-1">•</span>
-              <span>{file.size} MB</span>
-              <span className="mx-1">•</span>
-              <span>{formatDistanceToNow(file.uploadedAt, { addSuffix: true })}</span>
-            </div>
-          </div>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreVertical className="h-4 w-4" />
-                <span className="sr-only">Actions</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => handleDelete(file.id)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                <span>Delete</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => handleChangeCategory(file.id, "business")}
-                disabled={file.category === "business"}
-              >
-                <FolderInput className="mr-2 h-4 w-4" />
-                <span>Move to Business</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => handleChangeCategory(file.id, "personal")}
-                disabled={file.category === "personal"}
-              >
-                <FolderInput className="mr-2 h-4 w-4" />
-                <span>Move to Personal</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => handleChangeCategory(file.id, "financial")}
-                disabled={file.category === "financial"}
-              >
-                <FolderInput className="mr-2 h-4 w-4" />
-                <span>Move to Financial</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+    <div className="space-y-4">
+      {filteredFiles.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">No files found</p>
         </div>
-      ))}
+      ) : (
+        <div className="space-y-3">
+          {filteredFiles.map((file) => (
+            <div
+              key={file.id}
+              className="flex items-center p-3 rounded-md border border-border hover:bg-accent/50 transition-colors"
+            >
+              <div className="mr-3">{getFileIcon(file.type)}</div>
+
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{file.name}</p>
+                <div className="flex items-center text-xs text-muted-foreground">
+                  <span>{formatFileSize(file.size)}</span>
+                  <span className="mx-1">•</span>
+                  <span>{formatDistanceToNow(file.uploadedAt, { addSuffix: true })}</span>
+                </div>
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreVertical className="h-4 w-4" />
+                    <span className="sr-only">Actions</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => handleDelete(file.id)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    <span>Delete</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
