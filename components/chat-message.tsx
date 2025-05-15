@@ -1,23 +1,47 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import type { Message } from "@/types/message"
 import { Avatar } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Copy, Check, User, Bot, Maximize2, Minimize2 } from "lucide-react"
+import { 
+  Copy, Check, User, Bot, Maximize2, Minimize2, File, FileText, FileSpreadsheet,
+  ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Highlighter, MessageSquare, Download
+} from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 
 interface ChatMessageProps {
   message: Message
 }
 
+interface PDFAnnotation {
+  id: string
+  page: number
+  text: string
+  position: { x: number; y: number }
+  type: "highlight" | "comment"
+}
+
 export function ChatMessage({ message }: ChatMessageProps) {
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [showPdfPreview, setShowPdfPreview] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [zoom, setZoom] = useState(1)
+  const [annotations, setAnnotations] = useState<PDFAnnotation[]>([])
+  const [selectedText, setSelectedText] = useState("")
+  const [showAnnotationDialog, setShowAnnotationDialog] = useState(false)
+  const [annotationText, setAnnotationText] = useState("")
+  const pdfContainerRef = useRef<HTMLDivElement>(null)
 
   const isUser = message.role === "user"
+  const isAssistant = message.role === "assistant"
+  const isSystem = message.role === "system"
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(message.content)
@@ -29,81 +53,196 @@ export function ChatMessage({ message }: ChatMessageProps) {
     setExpanded(!expanded)
   }
 
-  return (
-    <div className={cn("flex w-full gap-3", isUser ? "justify-end" : "justify-start")}>
-      {!isUser && (
-        <Avatar className="h-8 w-8 bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
-          <Bot className="h-4 w-4" />
-        </Avatar>
-      )}
+  const getFileIcon = (fileType: string) => {
+    if (fileType === "application/pdf") {
+      return <File className="h-4 w-4 text-red-500" />
+    } else if (fileType === "text/plain") {
+      return <FileText className="h-4 w-4 text-blue-500" />
+    } else if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+      return <FileSpreadsheet className="h-4 w-4 text-blue-700" />
+    }
+    return <File className="h-4 w-4" />
+  }
 
-      <div className={cn("flex flex-col", isUser ? "items-end" : "items-start", "max-w-[85%]")}>
-        <Card className={cn(
-          "p-4 rounded-2xl",
-          isUser 
-            ? "bg-muted dark:bg-[#2d2d2d] text-foreground dark:text-white" 
-            : "bg-background dark:bg-[hsl(var(--chat-background)_/_0.6)]"
-        )}>
-          {message.type === "text" && (
-            <div
-              className={cn(
-                "prose prose-sm dark:prose-invert max-w-none",
-                expanded ? "" : "max-h-[300px] overflow-hidden",
-              )}
-            >
-              <p className="whitespace-pre-wrap break-words">{message.content}</p>
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes"
+    const k = 1024
+    const sizes = ["Bytes", "KB", "MB", "GB"]
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+  }
+
+  const handlePdfPreview = () => {
+    setShowPdfPreview(true)
+  }
+
+  const handleZoomIn = () => {
+    setZoom(prev => Math.min(prev + 0.2, 2))
+  }
+
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(prev - 0.2, 0.5))
+  }
+
+  const handlePageChange = (delta: number) => {
+    setCurrentPage(prev => Math.max(1, prev + delta))
+  }
+
+  const handleTextSelection = () => {
+    const selection = window.getSelection()
+    if (selection && selection.toString()) {
+      setSelectedText(selection.toString())
+      setShowAnnotationDialog(true)
+    }
+  }
+
+  const handleAddAnnotation = () => {
+    if (annotationText && selectedText) {
+      const newAnnotation: PDFAnnotation = {
+        id: Date.now().toString(),
+        page: currentPage,
+        text: annotationText,
+        position: { x: 0, y: 0 },
+        type: "comment"
+      }
+      setAnnotations(prev => [...prev, newAnnotation])
+      setAnnotationText("")
+      setShowAnnotationDialog(false)
+    }
+  }
+
+  const handleDownload = () => {
+    if (message.file?.url) {
+      const link = document.createElement('a')
+      link.href = message.file.url
+      link.download = message.file.name
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
+  }
+
+  const renderMessageContent = () => {
+    if (message.type === "file" && message.file) {
+      return (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            {getFileIcon(message.file.type)}
+            <div className="flex flex-col">
+              <span className="font-medium text-black dark:text-black">{message.file.name}</span>
+              <span className="text-xs text-black/70 dark:text-black/70">{formatFileSize(message.file.size)}</span>
             </div>
-          )}
-
-          {message.type === "image" && (
-            <div className="space-y-2">
-              <p>{message.content}</p>
-              <div className="mt-2 rounded-md overflow-hidden border border-border">
-                <img
-                  src={message.imageUrl || "/placeholder.svg"}
-                  alt="Generated image"
-                  className="w-full h-auto max-h-[300px] object-contain"
-                />
-              </div>
+          </div>
+          {message.content !== `Attached file: ${message.file.name}` && (
+            <div className="mt-2 text-black dark:text-black">
+              {message.content}
             </div>
-          )}
-
-          {message.content.length > 300 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleExpand}
-              className={cn(
-                "mt-2 h-6 px-2 text-xs",
-                isUser ? "text-primary-foreground/80 hover:text-primary-foreground/100 hover:bg-primary/80" : "",
-              )}
-            >
-              {expanded ? (
-                <>
-                  <Minimize2 className="h-3 w-3 mr-1" />
-                  Show less
-                </>
-              ) : (
-                <>
-                  <Maximize2 className="h-3 w-3 mr-1" />
-                  Show more
-                </>
-              )}
-            </Button>
-          )}
-        </Card>
-
-        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-          <span>{format(message.timestamp, "h:mm a")}</span>
-
-          {!isUser && (
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={copyToClipboard}>
-              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-              <span className="sr-only">Copy message</span>
-            </Button>
           )}
         </div>
+      )
+    }
+    return message.content
+  }
+
+  return (
+    <>
+      <div className={cn(
+        "flex items-start gap-4 pr-5",
+        isUser ? "flex-row-reverse" : "flex-row"
+      )}>
+        <Avatar
+          className={cn(
+            "h-8 w-8 flex-shrink-0",
+            isUser ? "bg-primary text-primary-foreground" : "bg-muted"
+          )}
+        >
+          {isUser ? "U" : isAssistant ? "AI" : "S"}
+        </Avatar>
+
+        <div className={cn(
+          "flex flex-col gap-1 max-w-[85%]",
+          isUser ? "items-end" : "items-start"
+        )}>
+          <div className={cn(
+            "rounded-2xl px-4 py-2 text-sm",
+            isUser ? "bg-primary" : "bg-muted",
+            isSystem && "bg-yellow-100 dark:bg-yellow-900 text-yellow-900 dark:text-yellow-100"
+          )}>
+            {renderMessageContent()}
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {message.timestamp.toLocaleTimeString()}
+          </span>
+        </div>
       </div>
-    </div>
+
+      {message.type === "file" && message.file?.type === "application/pdf" && (
+        <Dialog open={showPdfPreview} onOpenChange={setShowPdfPreview}>
+          <DialogContent className="max-w-4xl h-[80vh]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center justify-between">
+                <span className="text-black dark:text-black">{message.file.name}</span>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="icon" onClick={handleZoomOut}>
+                    <ZoomOut className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" onClick={handleZoomIn}>
+                    <ZoomIn className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" onClick={() => handlePageChange(-1)}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-black dark:text-black">Page {currentPage}</span>
+                  <Button variant="outline" size="icon" onClick={() => handlePageChange(1)}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" onClick={handleTextSelection}>
+                    <Highlighter className="h-4 w-4" />
+                  </Button>
+                </div>
+              </DialogTitle>
+            </DialogHeader>
+            <div 
+              ref={pdfContainerRef}
+              className="flex-1 overflow-auto bg-gray-100 dark:bg-gray-900 rounded-lg"
+              style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}
+            >
+              <iframe
+                src={`${message.file.url}#page=${currentPage}`}
+                className="w-full h-full"
+                onMouseUp={handleTextSelection}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      <Dialog open={showAnnotationDialog} onOpenChange={setShowAnnotationDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Annotation</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-2 bg-muted rounded">
+              <p className="text-sm font-medium text-black dark:text-black">Selected Text:</p>
+              <p className="text-sm text-black dark:text-black">{selectedText}</p>
+            </div>
+            <Textarea
+              placeholder="Add your annotation..."
+              value={annotationText}
+              onChange={(e) => setAnnotationText(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowAnnotationDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddAnnotation}>
+                Add Annotation
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

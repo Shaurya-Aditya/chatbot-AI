@@ -2,6 +2,13 @@ export type MessageType = "text" | "image" | "file"
 
 export type MessageRole = "user" | "assistant" | "system"
 
+export interface FileAttachment {
+  name: string
+  type: string
+  size: number
+  url: string
+}
+
 export interface Message {
   id: string
   content: string
@@ -9,6 +16,5 @@ export interface Message {
   role: MessageRole
   timestamp: Date
   imageUrl?: string
-  fileUrl?: string
-  fileName?: string
+  file?: FileAttachment
 }
