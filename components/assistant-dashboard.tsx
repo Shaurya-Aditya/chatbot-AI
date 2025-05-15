@@ -5,6 +5,9 @@ import { Header } from "@/components/header"
 import { ChatInterface } from "@/components/chat-interface"
 import { Sidebar } from "@/components/sidebar"
 import type { SystemStatus } from "@/types/system-status"
+import type { Message, MessageType, MessageRole } from "@/types/message"
+import { v4 as uuidv4 } from 'uuid'
+import { useEffect } from "react"
 
 export function AssistantDashboard() {
   const [systemStatus, setSystemStatus] = useState<SystemStatus>({
@@ -13,13 +16,92 @@ export function AssistantDashboard() {
   })
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
+  const defaultAssistantMessage = {
+    id: "1",
+    content: "Hello! I'm your AI assistant. How can I help you today?",
+    type: "text" as MessageType,
+    role: "assistant" as MessageRole,
+    timestamp: new Date(),
+  };
+
+  const [threads, setThreads] = useState([
+    {
+      id: uuidv4(),
+      name: "Thread 1",
+      messages: [defaultAssistantMessage],
+    },
+  ]);
+  const [selectedThreadId, setSelectedThreadId] = useState(threads[0].id);
+
+  const handleNewChat = () => {
+    const newThread = {
+      id: uuidv4(),
+      name: `Thread ${threads.length + 1}`,
+      messages: [
+        {
+          ...defaultAssistantMessage,
+          id: Date.now().toString(),
+          timestamp: new Date(),
+          type: "text" as MessageType,
+          role: "assistant" as MessageRole,
+        },
+      ],
+    };
+    setThreads((prev) => [...prev, newThread]);
+    setSelectedThreadId(newThread.id);
+  };
+
+  const setMessages = (updater: (prev: Message[]) => Message[]) => {
+    setThreads((prevThreads) =>
+      prevThreads.map((thread) =>
+        thread.id === selectedThreadId
+          ? { ...thread, messages: typeof updater === 'function' ? updater(thread.messages) : updater }
+          : thread
+      )
+    );
+  };
+
+  const selectedThread = threads.find((t) => t.id === selectedThreadId);
+
+  const handleDeleteThread = (id: string) => {
+    setThreads((prev) => prev.filter((thread) => thread.id !== id));
+    // If the deleted thread was selected, select another
+    if (selectedThreadId === id && threads.length > 1) {
+      const nextThread = threads.find((t) => t.id !== id);
+      if (nextThread) setSelectedThreadId(nextThread.id);
+    }
+  };
+
+  const handleRenameThread = (id: string, newName: string) => {
+    setThreads((prev) =>
+      prev.map((thread) =>
+        thread.id === id ? { ...thread, name: newName } : thread
+      )
+    );
+  };
+
   return (
     <div className="flex h-screen flex-col">
       <Header systemStatus={systemStatus} toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar isOpen={sidebarOpen} />
-        <main className="flex-1 overflow-hidden">
-          <ChatInterface onStatusChange={setSystemStatus} />
+      <div className="flex flex-1 overflow-hidden relative">
+        <Sidebar
+          isOpen={sidebarOpen}
+          onNewChat={handleNewChat}
+          threads={threads}
+          selectedThreadId={selectedThreadId}
+          setSelectedThreadId={setSelectedThreadId}
+          onRenameThread={handleRenameThread}
+          onDeleteThread={handleDeleteThread}
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        />
+        <main className={`flex-1 overflow-hidden transition-all duration-300 ${sidebarOpen ? 'md:ml-[260px]' : ''}`}>
+          <ChatInterface
+            onStatusChange={setSystemStatus}
+            messages={selectedThread ? selectedThread.messages : []}
+            setMessages={setMessages}
+            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+            sidebarOpen={sidebarOpen}
+          />
         </main>
       </div>
     </div>

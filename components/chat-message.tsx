@@ -30,15 +30,20 @@ export function ChatMessage({ message }: ChatMessageProps) {
   }
 
   return (
-    <div className={cn("flex w-full gap-3 max-w-4xl mx-auto", isUser ? "justify-end" : "justify-start")}>
+    <div className={cn("flex w-full gap-3", isUser ? "justify-end" : "justify-start")}>
       {!isUser && (
-        <Avatar className="h-8 w-8 bg-primary/10 flex items-center justify-center text-primary">
+        <Avatar className="h-8 w-8 bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
           <Bot className="h-4 w-4" />
         </Avatar>
       )}
 
-      <div className={cn("flex flex-col max-w-[80%]", isUser && "items-end")}>
-        <Card className={cn("px-4 py-3 shadow-sm", isUser ? "bg-primary text-primary-foreground" : "bg-muted")}>
+      <div className={cn("flex flex-col", isUser ? "items-end" : "items-start", "max-w-[85%]")}>
+        <Card className={cn(
+          "p-4 rounded-2xl",
+          isUser 
+            ? "bg-muted dark:bg-[#2d2d2d] text-foreground dark:text-white" 
+            : "bg-background dark:bg-[hsl(var(--chat-background)_/_0.6)]"
+        )}>
           {message.type === "text" && (
             <div
               className={cn(
@@ -46,7 +51,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 expanded ? "" : "max-h-[300px] overflow-hidden",
               )}
             >
-              <p>{message.content}</p>
+              <p className="whitespace-pre-wrap break-words">{message.content}</p>
             </div>
           )}
 
@@ -99,12 +104,6 @@ export function ChatMessage({ message }: ChatMessageProps) {
           )}
         </div>
       </div>
-
-      {isUser && (
-        <Avatar className="h-8 w-8 bg-primary flex items-center justify-center text-primary-foreground">
-          <User className="h-4 w-4" />
-        </Avatar>
-      )}
     </div>
   )
 }

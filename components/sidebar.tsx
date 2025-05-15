@@ -3,90 +3,293 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { FileUploader } from "@/components/file-uploader"
-import { FileList } from "@/components/file-list"
-import { Search } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Search, MoreHorizontal, Check, X, Menu, Plus } from "lucide-react"
 import type { FileCategory } from "@/types/file"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 
 interface SidebarProps {
   isOpen: boolean
+  onNewChat?: () => void
+  threads?: { id: string; name: string }[]
+  selectedThreadId?: string
+  setSelectedThreadId?: (id: string) => void
+  onRenameThread?: (id: string, newName: string) => void
+  onDeleteThread?: (id: string) => void
+  onToggleSidebar?: () => void
 }
 
-export function Sidebar({ isOpen }: SidebarProps) {
+export function Sidebar({ 
+  isOpen, 
+  onNewChat, 
+  threads = [], 
+  selectedThreadId, 
+  setSelectedThreadId, 
+  onRenameThread, 
+  onDeleteThread,
+  onToggleSidebar 
+}: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("")
-  const [activeCategory, setActiveCategory] = useState<FileCategory | "all">("all")
+  const [editingThread, setEditingThread] = useState<{ id: string; name: string } | null>(null)
+  const [newThreadName, setNewThreadName] = useState("")
+
+  // Filter threads based on search query
+  const filteredThreads = threads.filter(thread => 
+    thread.name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const handleRenameClick = (thread: { id: string; name: string }) => {
+    setEditingThread(thread)
+    setNewThreadName(thread.name)
+    setTimeout(() => {
+      const input = document.getElementById('thread-name') as HTMLInputElement
+      if (input) {
+        input.focus()
+        input.select()
+      }
+    }, 0)
+  }
+
+  const handleRenameSubmit = () => {
+    if (editingThread && newThreadName.trim() && onRenameThread) {
+      onRenameThread(editingThread.id, newThreadName.trim())
+      setEditingThread(null)
+      setNewThreadName("")
+    }
+  }
+
+  const handleRenameCancel = () => {
+    setEditingThread(null)
+    setNewThreadName("")
+  }
 
   if (!isOpen) {
     return null
   }
 
   return (
-    <div className="w-full max-w-xs border-r border-border h-full flex flex-col bg-background">
-      <div className="p-4 border-b border-border">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search documents..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+    <>
+      {/* Floating toggle button when sidebar is closed */}
+      {!isOpen && (
+        <Button
+          variant="outline"
+          size="icon"
+          className="fixed left-4 top-4 z-40 bg-background border border-border shadow-md hover:bg-accent"
+          onClick={onToggleSidebar}
+        >
+          <Menu className="h-4 w-4" />
+          <span className="sr-only">Open sidebar</span>
+        </Button>
+      )}
+
+      {/* Main sidebar */}
+      <div 
+        className={`fixed inset-y-0 left-0 transition-all duration-300 ease-in-out z-30 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="relative h-full flex flex-col w-[260px] bg-background dark:bg-black text-foreground dark:text-white shadow-xl border-r border-border dark:border-white/10">
+          {/* Toggle button inside sidebar */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute -right-10 top-4 z-40 bg-background dark:bg-black border border-border dark:border-white/10 rounded-l-none shadow-md hover:bg-accent dark:hover:bg-white/10 text-foreground dark:text-white"
+            onClick={onToggleSidebar}
+          >
+            <Menu className="h-4 w-4" />
+            <span className="sr-only">Close sidebar</span>
+          </Button>
+
+          {/* Add top margin container */}
+          <div className="pt-6">
+            {/* Tabs for Documents and Upload */}
+            <Tabs defaultValue="documents" className="flex-none">
+              <div className="border-b border-border dark:border-white/10">
+                <TabsList className="w-full flex flex-col h-auto p-0 bg-background dark:bg-black">
+                  <TabsTrigger 
+                    value="documents" 
+                    className="w-full justify-start rounded-none border-b border-border dark:border-white/10 data-[state=active]:border-b-0 text-foreground dark:text-white data-[state=active]:bg-background dark:data-[state=active]:bg-black hover:bg-accent dark:hover:bg-white/5 text-sm"
+                  >
+                    Documents
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="upload" 
+                    className="w-full justify-start rounded-none text-foreground dark:text-white data-[state=active]:bg-background dark:data-[state=active]:bg-black hover:bg-accent dark:hover:bg-white/5 text-sm"
+                  >
+                    Upload
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent 
+                value="documents" 
+                className="p-2 bg-background dark:bg-black border-b border-border dark:border-white/10"
+              >
+                <div className="rounded-lg border border-border dark:border-white/10 bg-background dark:bg-black p-2">
+                  {/* Empty documents content */}
+                </div>
+              </TabsContent>
+
+              <TabsContent 
+                value="upload" 
+                className="p-2 bg-background dark:bg-black border-b border-border dark:border-white/10"
+              >
+                <div className="rounded-lg border border-border dark:border-white/10 bg-background dark:bg-black p-2">
+                  <p className="text-muted-foreground dark:text-white/70 text-sm">Upload functionality coming soon</p>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {/* New Chat Button - moved closer to tabs */}
+            <div className="px-4 pt-2 pb-3 border-t border-border dark:border-white/10">
+              <Button
+                variant="outline"
+                onClick={onNewChat}
+                className="w-full justify-start gap-2 bg-background dark:bg-black hover:bg-accent text-foreground dark:text-white border-border dark:border-white/10"
+              >
+                <Plus className="h-4 w-4" />
+                New Chat
+              </Button>
+            </div>
+
+            {/* Search */}
+            <div className="px-4 pb-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-foreground dark:text-white/50" />
+                <Input
+                  type="search"
+                  placeholder="Search conversations..."
+                  className="pl-8 bg-background dark:bg-black border-border dark:border-white/10 text-foreground dark:text-white placeholder:text-foreground dark:placeholder:text-white/50 focus-visible:ring-accent dark:focus-visible:ring-white/20"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Threads List */}
+            <div className="flex-1 overflow-auto px-2 pb-4">
+              <h3 className="text-sm font-medium px-2 mb-2 text-foreground dark:text-white/70">
+                {searchQuery ? 'Search Results' : 'Recent Conversations'}
+              </h3>
+              <div className="space-y-1">
+                {filteredThreads.length > 0 ? (
+                  filteredThreads.map((thread) => (
+                    <div
+                      key={thread.id}
+                      className={`group flex items-center justify-between rounded-lg px-3 py-2 transition-colors ${
+                        thread.id === selectedThreadId 
+                          ? 'bg-accent dark:bg-white/10 text-foreground dark:text-white' 
+                          : 'hover:bg-accent/10 dark:hover:bg-white/5 text-muted-foreground dark:text-white/70 hover:text-foreground dark:hover:text-white'
+                      }`}
+                      onClick={(e) => {
+                        if (!(e.target as HTMLElement).closest('[data-dropdown-trigger]')) {
+                          setSelectedThreadId && setSelectedThreadId(thread.id);
+                        }
+                      }}
+                    >
+                      <span className="truncate flex-1 text-sm" title={thread.name}>{thread.name}</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button 
+                            data-dropdown-trigger
+                            className="ml-2 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent/20 text-foreground dark:hover:bg-white/10" 
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent 
+                          align="end" 
+                          className="w-56 bg-background dark:bg-black border-border dark:border-white/10 text-foreground dark:text-white"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRenameClick(thread);
+                            }}
+                            className="text-foreground dark:text-white hover:bg-accent/10 focus:bg-accent/20"
+                          >
+                            Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteThread && onDeleteThread(thread.id);
+                            }}
+                            className="text-red-400 hover:bg-accent/10 focus:bg-accent/20 focus:text-red-400"
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-sm text-muted-foreground dark:text-white/50">
+                    {searchQuery ? 'No conversations found' : 'No conversations yet'}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <Tabs defaultValue="documents" className="flex-1 flex flex-col">
-        <div className="border-b border-border px-4">
-          <TabsList className="w-full justify-start">
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="upload">Upload</TabsTrigger>
-          </TabsList>
-        </div>
+      {/* Mobile overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-20 md:hidden"
+          onClick={onToggleSidebar}
+        />
+      )}
 
-        <TabsContent value="documents" className="flex-1 p-0 flex flex-col">
-          <div className="p-4 border-b border-border">
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                variant={activeCategory === "all" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveCategory("all")}
-              >
-                All
-              </Button>
-              <Button
-                variant={activeCategory === "business" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveCategory("business")}
-              >
-                Business
-              </Button>
-              <Button
-                variant={activeCategory === "personal" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveCategory("personal")}
-              >
-                Personal
-              </Button>
-              <Button
-                variant={activeCategory === "financial" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveCategory("financial")}
-              >
-                Financial
-              </Button>
+      <Dialog open={!!editingThread} onOpenChange={(open) => !open && handleRenameCancel()}>
+        <DialogContent className="sm:max-w-[425px] bg-background dark:bg-black border-border dark:border-white/10 text-foreground dark:text-white">
+          <DialogHeader>
+            <DialogTitle className="text-foreground dark:text-white">Rename Thread</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Input
+                id="thread-name"
+                value={newThreadName}
+                onChange={(e) => setNewThreadName(e.target.value)}
+                placeholder="Enter new thread name"
+                className="text-lg bg-background dark:bg-black border-border dark:border-white/10 text-foreground dark:text-white placeholder:text-foreground dark:placeholder:text-white/50 focus-visible:ring-accent dark:focus-visible:ring-white/20"
+                autoFocus
+                onFocus={(e) => e.target.select()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleRenameSubmit();
+                  } else if (e.key === 'Escape') {
+                    handleRenameCancel();
+                  }
+                }}
+              />
             </div>
           </div>
-
-          <div className="flex-1 overflow-auto p-4">
-            <FileList searchQuery={searchQuery} category={activeCategory} />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="upload" className="flex-1 p-4 flex flex-col">
-          <FileUploader />
-        </TabsContent>
-      </Tabs>
-    </div>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={handleRenameCancel}
+              className="flex items-center gap-2 border-border dark:border-white/10 text-foreground dark:text-white hover:bg-accent dark:hover:bg-white/10"
+            >
+              <X className="h-4 w-4" />
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRenameSubmit}
+              className="flex items-center gap-2 bg-black text-white hover:bg-black/90 dark:bg-white/10 dark:hover:bg-white/20"
+              disabled={!newThreadName.trim()}
+            >
+              <Check className="h-4 w-4" />
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

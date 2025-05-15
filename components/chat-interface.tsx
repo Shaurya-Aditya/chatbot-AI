@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Send, Mic, Paperclip, Loader2 } from "lucide-react"
+import { Send, Mic, Paperclip, Loader2, Menu } from "lucide-react"
 import type { Message } from "@/types/message"
 import type { SystemStatus } from "@/types/system-status"
 import { ChatMessage } from "@/components/chat-message"
@@ -15,18 +15,19 @@ import { useToast } from "@/hooks/use-toast"
 
 interface ChatInterfaceProps {
   onStatusChange: (status: SystemStatus) => void
+  messages: Message[]
+  setMessages: (updater: (prev: Message[]) => Message[]) => void
+  onToggleSidebar?: () => void
+  sidebarOpen?: boolean
 }
 
-export function ChatInterface({ onStatusChange }: ChatInterfaceProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      content: "Hello! I'm your AI assistant. How can I help you today?",
-      type: "text",
-      role: "assistant",
-      timestamp: new Date(),
-    },
-  ])
+export function ChatInterface({ 
+  onStatusChange, 
+  messages, 
+  setMessages, 
+  onToggleSidebar,
+  sidebarOpen 
+}: ChatInterfaceProps) {
   const [input, setInput] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [detailedMode, setDetailedMode] = useState(false)
@@ -130,35 +131,61 @@ export function ChatInterface({ onStatusChange }: ChatInterfaceProps) {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-w-2 scrollbar-track-blue-lighter scrollbar-thumb-blue scrollbar-thumb-rounded">
-        {messages.map((message) => (
-          <ChatMessage key={message.id} message={message} />
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-
-      <div className="border-t border-border p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-2">
-            <Switch id="detailed-mode" checked={detailedMode} onCheckedChange={setDetailedMode} />
-            <Label htmlFor="detailed-mode" className="text-sm">
-              Detailed responses
-            </Label>
-          </div>
-
-          {isProcessing && (
-            <div className="flex items-center text-sm text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-              <span>Processing...</span>
-            </div>
+    <div className="flex flex-col h-full chat-background">
+      {/* Chat Header */}
+      <div className="border-b border-border p-4 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleSidebar}
+            className="md:hidden"
+          >
+            <Menu className="h-5 w-5" />
+            <span className="sr-only">Toggle sidebar</span>
+          </Button>
+          {!sidebarOpen && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleSidebar}
+              className="hidden md:flex"
+            >
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Open sidebar</span>
+            </Button>
           )}
         </div>
+        <div className="flex-1" />
+        <div className="flex items-center space-x-2">
+          <Switch id="detailed-mode" checked={detailedMode} onCheckedChange={setDetailedMode} />
+          <Label htmlFor="detailed-mode" className="text-sm">
+            Detailed responses
+          </Label>
+        </div>
+      </div>
 
-        <div className="relative">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-w-2 scrollbar-track-blue-lighter scrollbar-thumb-blue scrollbar-thumb-rounded">
+        <div className="max-w-3xl mx-auto w-full">
+          {messages.map((message) => (
+            <ChatMessage key={message.id} message={message} />
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+
+      <div className="border-t border-border p-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        {isProcessing && (
+          <div className="flex items-center justify-center text-sm text-muted-foreground mb-2">
+            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+            <span>Processing...</span>
+          </div>
+        )}
+
+        <div className="max-w-3xl mx-auto w-full relative">
           <Textarea
             placeholder="Type your message..."
-            className="min-h-[80px] resize-none pr-24"
+            className="min-h-[80px] resize-none pr-24 rounded-2xl"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -179,10 +206,10 @@ export function ChatInterface({ onStatusChange }: ChatInterfaceProps) {
             <Button
               onClick={handleSendMessage}
               disabled={!input.trim() || isProcessing}
-              className="rounded-full"
+              className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground dark:bg-[#2d2d2d] dark:hover:bg-[#3d3d3d]"
               size="icon"
             >
-              <Send className="h-4 w-4" />
+              <Send className="h-4 w-4 text-white" />
               <span className="sr-only">Send</span>
             </Button>
           </div>
