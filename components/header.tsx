@@ -7,6 +7,7 @@ import { ModeToggle } from "@/components/mode-toggle"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useState } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { useTheme } from "next-themes"
 
 interface HeaderProps {
   systemStatus: SystemStatus
@@ -16,6 +17,7 @@ interface HeaderProps {
 export function Header({ systemStatus, toggleSidebar }: HeaderProps) {
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false)
   const [profileImage, setProfileImage] = useState<string | null>(null)
+  const { theme } = useTheme();
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -35,6 +37,13 @@ export function Header({ systemStatus, toggleSidebar }: HeaderProps) {
   return (
     <header className="border-b border-border">
       <div className="flex h-16 items-center px-4 md:px-6">
+        <div className="flex items-center flex-shrink-0">
+          <img
+            src={theme === 'dark' ? '/dark.webp' : '/light.webp'}
+            alt="Logo"
+            className="h-10 w-auto"
+          />
+        </div>
         <div className="flex-1" />
 
         <div className="ml-auto flex items-center gap-4">
