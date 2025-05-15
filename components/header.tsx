@@ -47,19 +47,6 @@ export function Header({ systemStatus, toggleSidebar }: HeaderProps) {
         <div className="flex-1" />
 
         <div className="ml-auto flex items-center gap-4">
-          <div className="hidden md:flex items-center">
-            <div
-              className={`h-2 w-2 rounded-full mr-2 ${
-                systemStatus.status === "connected"
-                  ? "bg-green-500"
-                  : systemStatus.status === "processing"
-                    ? "bg-yellow-500"
-                    : "bg-red-500"
-              }`}
-            />
-            <span className="text-sm text-muted-foreground">{systemStatus.message}</span>
-          </div>
-
           <ModeToggle />
 
           <div className="flex items-center gap-2">

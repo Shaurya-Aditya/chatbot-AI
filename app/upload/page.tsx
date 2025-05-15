@@ -127,7 +127,7 @@ export default function UploadPage() {
                 <span className="ml-auto text-xs text-muted-foreground dark:text-zinc-400">{(file.size / 1024).toFixed(1)} KB</span>
               </div>
             )}
-            <Button type="submit" className="w-full mt-2" disabled={!file || loading}>
+            <Button type="submit" className="w-full mt-2 text-white dark:text-black font-semibold bg-[#000000] hover:bg-[#000000]/90 dark:bg-white dark:hover:bg-white/90" disabled={!file || loading}>
               {loading ? 'Uploading...' : 'Upload'}
             </Button>
           </form>

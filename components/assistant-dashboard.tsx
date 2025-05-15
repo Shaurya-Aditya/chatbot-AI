@@ -27,7 +27,7 @@ export function AssistantDashboard() {
   const [threads, setThreads] = useState([
     {
       id: uuidv4(),
-      name: "Thread 1",
+      name: "New Chat",
       messages: [defaultAssistantMessage],
     },
   ]);
@@ -36,7 +36,7 @@ export function AssistantDashboard() {
   const handleNewChat = () => {
     const newThread = {
       id: uuidv4(),
-      name: `Thread ${threads.length + 1}`,
+      name: "New Chat",
       messages: [
         {
           ...defaultAssistantMessage,
@@ -55,7 +55,35 @@ export function AssistantDashboard() {
     setThreads((prevThreads) =>
       prevThreads.map((thread) =>
         thread.id === selectedThreadId
-          ? { ...thread, messages: typeof updater === 'function' ? updater(thread.messages) : updater }
+          ? {
+              ...thread,
+              messages: (() => {
+                const updatedMessages = typeof updater === 'function' 
+                  ? updater(thread.messages)
+                  : updater;
+                
+                // Update thread name if this is the first user message
+                if (updatedMessages.length > 0) {
+                  const firstUserMessage = updatedMessages.find(msg => msg.role === 'user');
+                  if (firstUserMessage && thread.name.startsWith('Thread')) {
+                    // Use first 30 characters of the message as thread name
+                    const newName = firstUserMessage.content.slice(0, 30) + (firstUserMessage.content.length > 30 ? '...' : '');
+                    thread.name = newName;
+                  }
+                }
+
+                // Ensure user messages are preserved exactly as they were
+                return updatedMessages.map((msg: Message) => {
+                  if (msg.role === 'user') {
+                    return {
+                      ...msg,
+                      content: msg.content // Preserve exact user input
+                    };
+                  }
+                  return msg;
+                });
+              })()
+            }
           : thread
       )
     );
@@ -80,6 +108,10 @@ export function AssistantDashboard() {
     );
   };
 
+  const handleThreadNameUpdate = (newName: string) => {
+    handleRenameThread(selectedThreadId, newName);
+  };
+
   return (
     <div className="flex h-screen flex-col">
       <Header systemStatus={systemStatus} toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
@@ -101,6 +133,7 @@ export function AssistantDashboard() {
             setMessages={setMessages}
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
             sidebarOpen={sidebarOpen}
+            onThreadNameUpdate={handleThreadNameUpdate}
           />
         </main>
       </div>

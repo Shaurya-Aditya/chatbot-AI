@@ -129,19 +129,35 @@ export function ChatMessage({ message }: ChatMessageProps) {
           <div className="flex items-center gap-2">
             {getFileIcon(message.file.type)}
             <div className="flex flex-col">
-              <span className="font-medium text-black dark:text-black">{message.file.name}</span>
-              <span className="text-xs text-black/70 dark:text-black/70">{formatFileSize(message.file.size)}</span>
+              <span className={cn(
+                "font-medium",
+                isUser ? "text-white" : "text-black dark:text-black"
+              )}>{message.file.name}</span>
+              <span className={cn(
+                "text-xs",
+                isUser ? "text-white/70" : "text-black/70 dark:text-black/70"
+              )}>{formatFileSize(message.file.size)}</span>
             </div>
           </div>
           {message.content !== `Attached file: ${message.file.name}` && (
-            <div className="mt-2 text-black dark:text-black">
+            <div className={cn(
+              "mt-2 whitespace-pre-wrap",
+              isUser ? "text-white" : "text-black dark:text-black"
+            )}>
               {message.content}
             </div>
           )}
         </div>
       )
     }
-    return message.content
+    return (
+      <div className={cn(
+        "whitespace-pre-wrap",
+        isUser ? "text-white" : "text-black dark:text-black"
+      )}>
+        {message.content}
+      </div>
+    )
   }
 
   return (
@@ -165,7 +181,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
         )}>
           <div className={cn(
             "rounded-2xl px-4 py-2 text-sm",
-            isUser ? "bg-primary text-white dark:bg-primary dark:text-white" : "bg-muted text-foreground dark:bg-muted dark:text-foreground",
+            isUser 
+              ? "bg-black text-white dark:bg-black dark:text-white" 
+              : "bg-white dark:bg-white",
             isSystem && "bg-yellow-100 dark:bg-yellow-900 text-yellow-900 dark:text-yellow-100"
           )}>
             {renderMessageContent()}
