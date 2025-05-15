@@ -5,6 +5,11 @@ export const maxDuration = 30
 
 const openai = new OpenAI()
 
+interface ChatMessage {
+  role: string;
+  content: string;
+}
+
 export async function POST(req: Request) {
   try {
     const { messages, detailedMode } = await req.json()
@@ -34,7 +39,7 @@ export async function POST(req: Request) {
     // Create a streaming response with the exact messages
     const stream = await openai.chat.completions.create({
       model: "gpt-4",
-      messages: messages.map(msg => ({
+      messages: messages.map((msg: ChatMessage) => ({
         role: msg.role,
         content: msg.content // Use exact content without modification
       })),

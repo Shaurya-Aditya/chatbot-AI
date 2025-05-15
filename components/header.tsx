@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button"
 import { Menu, User, Upload, Trash2 } from "lucide-react"
 import type { SystemStatus } from "@/types/system-status"
-import { ModeToggle } from "@/components/mode-toggle"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useState } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -47,8 +46,6 @@ export function Header({ systemStatus, toggleSidebar }: HeaderProps) {
         <div className="flex-1" />
 
         <div className="ml-auto flex items-center gap-4">
-          <ModeToggle />
-
           <div className="flex items-center gap-2">
             <div className="text-right hidden md:block">
               <p className="text-sm font-medium">Rajat Jain</p>

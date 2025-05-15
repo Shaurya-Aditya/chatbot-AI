@@ -166,15 +166,6 @@ export function ChatMessage({ message }: ChatMessageProps) {
         "flex items-start gap-4 pr-5",
         isUser ? "flex-row-reverse" : "flex-row"
       )}>
-        <Avatar
-          className={cn(
-            "h-8 w-8 flex-shrink-0",
-            isUser ? "bg-primary text-primary-foreground" : "bg-muted"
-          )}
-        >
-          {isUser ? "U" : isAssistant ? "AI" : "S"}
-        </Avatar>
-
         <div className={cn(
           "flex flex-col gap-1 max-w-[85%]",
           isUser ? "items-end" : "items-start"
@@ -182,7 +173,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
           <div className={cn(
             "rounded-2xl px-4 py-2 text-sm",
             isUser 
-              ? "bg-black text-white dark:bg-black dark:text-white" 
+              ? "bg-gray-200 text-black" 
               : "bg-white dark:bg-white",
             isSystem && "bg-yellow-100 dark:bg-yellow-900 text-yellow-900 dark:text-yellow-100"
           )}>
