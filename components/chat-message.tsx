@@ -2,17 +2,10 @@
 
 import { useState, useRef } from "react"
 import type { Message } from "@/types/message"
-import { Avatar } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { 
-  Copy, Check, User, Bot, Maximize2, Minimize2, File, FileText, FileSpreadsheet,
-  ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Highlighter, MessageSquare, Download
-} from "lucide-react"
-import { format } from "date-fns"
+import { File, FileText, FileSpreadsheet, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Highlighter } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
 interface ChatMessageProps {
@@ -69,7 +62,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
     const k = 1024
     const sizes = ["Bytes", "KB", "MB", "GB"]
     const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
   const handlePdfPreview = () => {
@@ -77,15 +70,15 @@ export function ChatMessage({ message }: ChatMessageProps) {
   }
 
   const handleZoomIn = () => {
-    setZoom(prev => Math.min(prev + 0.2, 2))
+    setZoom((prev) => Math.min(prev + 0.2, 2))
   }
 
   const handleZoomOut = () => {
-    setZoom(prev => Math.max(prev - 0.2, 0.5))
+    setZoom((prev) => Math.max(prev - 0.2, 0.5))
   }
 
   const handlePageChange = (delta: number) => {
-    setCurrentPage(prev => Math.max(1, prev + delta))
+    setCurrentPage((prev) => Math.max(1, prev + delta))
   }
 
   const handleTextSelection = () => {
@@ -103,9 +96,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
         page: currentPage,
         text: annotationText,
         position: { x: 0, y: 0 },
-        type: "comment"
+        type: "comment",
       }
-      setAnnotations(prev => [...prev, newAnnotation])
+      setAnnotations((prev) => [...prev, newAnnotation])
       setAnnotationText("")
       setShowAnnotationDialog(false)
     }
@@ -113,7 +106,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
   const handleDownload = () => {
     if (message.file?.url) {
-      const link = document.createElement('a')
+      const link = document.createElement("a")
       link.href = message.file.url
       link.download = message.file.name
       document.body.appendChild(link)
@@ -129,59 +122,34 @@ export function ChatMessage({ message }: ChatMessageProps) {
           <div className="flex items-center gap-2">
             {getFileIcon(message.file.type)}
             <div className="flex flex-col">
-              <span className={cn(
-                "font-medium",
-                isUser ? "text-white" : "text-black dark:text-black"
-              )}>{message.file.name}</span>
-              <span className={cn(
-                "text-xs",
-                isUser ? "text-white/70" : "text-black/70 dark:text-black/70"
-              )}>{formatFileSize(message.file.size)}</span>
+              <span className={cn("font-medium", isUser ? "text-white" : "text-black dark:text-black")}>
+                {message.file.name}
+              </span>
+              <span className={cn("text-xs", "text-black/70")}>{formatFileSize(message.file.size)}</span>
             </div>
           </div>
           {message.content !== `Attached file: ${message.file.name}` && (
-            <div className={cn(
-              "mt-2 whitespace-pre-wrap",
-              isUser ? "text-white" : "text-black dark:text-black"
-            )}>
-              {message.content}
-            </div>
+            <div className={cn("mt-2 whitespace-pre-wrap", "text-black")}>{message.content}</div>
           )}
         </div>
       )
     }
-    return (
-      <div className={cn(
-        "whitespace-pre-wrap",
-        isUser ? "text-white" : "text-black dark:text-black"
-      )}>
-        {message.content}
-      </div>
-    )
+    return <div className={cn("whitespace-pre-wrap", "text-black")}>{message.content}</div>
   }
 
   return (
     <>
-      <div className={cn(
-        "flex items-start gap-4 pr-5",
-        isUser ? "flex-row-reverse" : "flex-row"
-      )}>
-        <div className={cn(
-          "flex flex-col gap-1 max-w-[85%]",
-          isUser ? "items-end" : "items-start"
-        )}>
-          <div className={cn(
-            "rounded-2xl px-4 py-2 text-sm",
-            isUser 
-              ? "bg-gray-200 text-black" 
-              : "bg-white dark:bg-white",
-            isSystem && "bg-yellow-100 dark:bg-yellow-900 text-yellow-900 dark:text-yellow-100"
-          )}>
+      <div className={cn("flex items-start gap-4 pr-5", isUser ? "flex-row-reverse" : "flex-row")}>
+        <div className={cn("flex flex-col gap-1 max-w-[85%]", isUser ? "items-end" : "items-start")}>
+          <div
+            className={cn(
+              "rounded-2xl px-4 py-2 text-sm",
+              isUser ? "bg-gray-200 text-black" : "bg-white text-black",
+              isSystem && "bg-yellow-100 dark:bg-yellow-900 text-yellow-900 dark:text-yellow-100",
+            )}
+          >
             {renderMessageContent()}
           </div>
-          <span className="text-xs text-muted-foreground">
-            {message.timestamp.toLocaleTimeString()}
-          </span>
         </div>
       </div>
 
@@ -211,10 +179,10 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 </div>
               </DialogTitle>
             </DialogHeader>
-            <div 
+            <div
               ref={pdfContainerRef}
               className="flex-1 overflow-auto bg-gray-100 dark:bg-gray-900 rounded-lg"
-              style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}
+              style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}
             >
               <iframe
                 src={`${message.file.url}#page=${currentPage}`}
@@ -245,9 +213,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
               <Button variant="outline" onClick={() => setShowAnnotationDialog(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleAddAnnotation}>
-                Add Annotation
-              </Button>
+              <Button onClick={handleAddAnnotation}>Add Annotation</Button>
             </div>
           </div>
         </DialogContent>

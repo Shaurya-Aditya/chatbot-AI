@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Send, Mic, Paperclip, Loader2, Menu } from "lucide-react"
+import { Send, Mic, MicOff, Paperclip, Loader2, Menu, X, FileText, StopCircle } from "lucide-react"
 import type { Message } from "@/types/message"
 import type { SystemStatus } from "@/types/system-status"
 import { ChatMessage } from "@/components/chat-message"
@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { v4 as uuidv4 } from 'uuid'
+import type { SpeechRecognition, SpeechRecognitionEvent, SpeechRecognitionErrorEvent } from "@/types/speech-recognition"
 
 interface ChatInterfaceProps {
   onStatusChange: (status: SystemStatus) => void
@@ -33,8 +34,14 @@ export function ChatInterface({
 }: ChatInterfaceProps) {
   const [input, setInput] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [abortController, setAbortController] = useState<AbortController | null>(null)
   const [detailedMode, setDetailedMode] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
   const { toast } = useToast()
 
   const scrollToBottom = () => {
@@ -47,41 +54,124 @@ export function ChatInterface({
     scrollToBottom()
   }, [messages])
 
-  const handleSendMessage = async () => {
-    if (!input.trim() || isProcessing) return
+  // Initialize speech recognition
+  useEffect(() => {
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (typeof window !== 'undefined' && SpeechRecognitionAPI) {
+      const recognition = new SpeechRecognitionAPI()
+      recognitionRef.current = recognition
+      
+      if (recognitionRef.current) {
+        recognitionRef.current.continuous = true
+        recognitionRef.current.interimResults = true
+        recognitionRef.current.lang = 'en-US'
 
-    // Store the exact user input without any modification
-    const userInput = input.trim()
-    
-    // Create user message with exact content using UUID for unique ID
-    const userMessage: Message = {
-      id: uuidv4(),
-      content: userInput, // Store exact user input
-      type: "text",
-      role: "user",
-      timestamp: new Date(),
-    }
+        recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+          const transcript = Array.from(event.results)
+            .map(result => result[0].transcript)
+            .join('')
+          setInput(transcript)
+        }
 
-    // Add user message immediately with exact content and update thread name if this is the first user message
-    setMessages((prev) => {
-      const updatedMessages = [...prev];
-      // Check if this is the first user message
-      const isFirstUserMessage = !updatedMessages.some(msg => msg.role === 'user');
-      if (isFirstUserMessage) {
-        // Update thread name to first 30 characters of the message
-        const threadName = userInput.slice(0, 30) + (userInput.length > 30 ? '...' : '');
-        // Update the thread name through the parent component
-        if (onThreadNameUpdate) {
-          onThreadNameUpdate(threadName);
+        recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
+          console.error('Speech recognition error:', event.error)
+          toast({
+            title: "Voice Input Error",
+            description: "There was an error with voice recognition. Please try again.",
+            variant: "destructive",
+          })
+          setIsRecording(false)
+        }
+
+        recognitionRef.current.onend = () => {
+          setIsRecording(false)
         }
       }
-      updatedMessages.push(userMessage);
-      return updatedMessages;
-    });
+    }
 
-    setInput("") // Clear input after storing
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+      }
+    }
+  }, [toast])
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Check file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select a file smaller than 10MB",
+          variant: "destructive",
+        })
+        return
+      }
+      setSelectedFile(file)
+    }
+  }
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
+  const handleStopStreaming = () => {
+    if (abortController) {
+      abortController.abort()
+      setIsStreaming(false)
+      setIsProcessing(false)
+      onStatusChange({ status: "connected", message: "System ready" })
+    }
+  }
+
+  const handleSendMessage = async () => {
+    if ((!input.trim() && !selectedFile) || isProcessing) return
+
+    // Create user message with content and file if present
+    const userMessage: Message = {
+      id: uuidv4(),
+      content: input.trim(),
+      type: selectedFile ? "file" : "text",
+      role: "user",
+      timestamp: new Date(),
+      file: selectedFile ? {
+        name: selectedFile.name,
+        type: selectedFile.type,
+        size: selectedFile.size,
+        url: URL.createObjectURL(selectedFile)
+      } : undefined
+    }
+
+    // Add user message immediately
+    setMessages((prev) => {
+      const updatedMessages = [...prev]
+      const isFirstUserMessage = !updatedMessages.some(msg => msg.role === 'user')
+      if (isFirstUserMessage && input.trim()) {
+        const threadName = input.trim().slice(0, 30) + (input.trim().length > 30 ? '...' : '')
+        if (onThreadNameUpdate) {
+          onThreadNameUpdate(threadName)
+        }
+      }
+      updatedMessages.push(userMessage)
+      return updatedMessages
+    })
+
+    setInput("")
+    setSelectedFile(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
     setIsProcessing(true)
+    setIsStreaming(true)
     onStatusChange({ status: "processing", message: "Processing request..." })
+
+    // Create a new AbortController for this request
+    const controller = new AbortController()
+    setAbortController(controller)
 
     // Create a temporary message ID for the assistant's response using UUID
     const tempMessageId = uuidv4()
@@ -91,9 +181,10 @@ export function ChatInterface({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          messages: [...messages, userMessage], // Send exact user message
+          messages: [...messages, userMessage],
           detailedMode
         }),
+        signal: controller.signal
       })
 
       if (!response.ok) throw new Error("API error")
@@ -138,9 +229,7 @@ export function ChatInterface({
                 // Update only the AI message content in real-time
                 setMessages((prev) =>
                   prev.map((msg) => {
-                    // Don't modify user messages
                     if (msg.role === 'user') return msg;
-                    // Only update the AI's response
                     return msg.id === tempMessageId
                       ? { ...msg, content: accumulatedContent }
                       : msg;
@@ -153,16 +242,24 @@ export function ChatInterface({
           }
         }
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to process your request. Please try again.",
-        variant: "destructive",
-      })
-      // Remove only the AI's message on error
-      setMessages((prev) => prev.filter((msg) => msg.role !== 'user' && msg.id === tempMessageId))
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Don't remove the message on abort, just stop streaming
+        setIsStreaming(false)
+        setIsProcessing(false)
+        onStatusChange({ status: "connected", message: "System ready" })
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to process your request. Please try again.",
+          variant: "destructive",
+        })
+        setMessages((prev) => prev.filter((msg) => msg.id !== tempMessageId))
+      }
     } finally {
       setIsProcessing(false)
+      setIsStreaming(false)
+      setAbortController(null)
       onStatusChange({ status: "connected", message: "System ready" })
     }
   }
@@ -175,17 +272,48 @@ export function ChatInterface({
   }
 
   const handleAttachFile = () => {
-    toast({
-      title: "Attach file",
-      description: "You can reference uploaded files in your conversation.",
-    })
+    fileInputRef.current?.click()
   }
 
   const handleVoiceInput = () => {
-    toast({
-      title: "Voice input",
-      description: "Voice input feature is coming soon.",
-    })
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognitionAPI) {
+      toast({
+        title: "Voice Input Not Supported",
+        description: "Your browser doesn't support voice input. Please use a modern browser.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!recognitionRef.current) {
+      const recognition = new SpeechRecognitionAPI()
+      recognition.continuous = true
+      recognition.interimResults = true
+      recognition.lang = 'en-US'
+      recognitionRef.current = recognition
+    }
+
+    if (isRecording) {
+      recognitionRef.current?.stop()
+      setIsRecording(false)
+    } else {
+      try {
+        recognitionRef.current?.start()
+        setIsRecording(true)
+        toast({
+          title: "Voice Input Started",
+          description: "Speak now. Click the microphone button again to stop.",
+        })
+      } catch (error) {
+        console.error('Error starting speech recognition:', error)
+        toast({
+          title: "Voice Input Error",
+          description: "Could not start voice input. Please try again.",
+          variant: "destructive",
+        })
+      }
+    }
   }
 
   return (
@@ -236,11 +364,41 @@ export function ChatInterface({
         {isProcessing && (
           <div className="flex items-center justify-center text-sm text-muted-foreground mb-2">
             <Loader2 className="h-3 w-3 animate-spin mr-1" />
-            <span>Processing...</span>
+            <span>{isStreaming ? "AI is responding..." : "Processing..."}</span>
+          </div>
+        )}
+
+        {isRecording && (
+          <div className="flex items-center justify-center text-sm text-red-500 mb-2">
+            <Mic className="h-3 w-3 animate-pulse mr-1" />
+            <span>Listening...</span>
           </div>
         )}
 
         <div className="max-w-3xl mx-auto w-full relative">
+          {selectedFile && (
+            <div className="mb-2 flex items-center gap-2 p-2 bg-muted rounded-lg">
+              <FileText className="h-4 w-4 text-primary" />
+              <span className="text-sm truncate flex-1">{selectedFile.name}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleRemoveFile}
+                className="h-6 w-6"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            className="hidden"
+            accept=".pdf,.txt,.doc,.docx"
+          />
+
           <Textarea
             placeholder="Type your message..."
             className="min-h-[80px] resize-none pr-24 rounded-2xl"
@@ -251,25 +409,52 @@ export function ChatInterface({
           />
 
           <div className="absolute right-3 bottom-3 flex items-center space-x-2">
-            <Button variant="ghost" size="icon" onClick={handleAttachFile} disabled={isProcessing} title="Attach file">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleAttachFile} 
+              disabled={isProcessing || isRecording} 
+              title="Attach file"
+              className={selectedFile ? "text-primary" : ""}
+            >
               <Paperclip className="h-4 w-4" />
               <span className="sr-only">Attach file</span>
             </Button>
 
-            <Button variant="ghost" size="icon" onClick={handleVoiceInput} disabled={isProcessing} title="Voice input">
-              <Mic className="h-4 w-4" />
-              <span className="sr-only">Voice input</span>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleVoiceInput} 
+              disabled={isProcessing} 
+              title={isRecording ? "Stop voice input" : "Start voice input"}
+              className={isRecording ? "text-red-500" : ""}
+            >
+              {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              <span className="sr-only">{isRecording ? "Stop voice input" : "Start voice input"}</span>
             </Button>
 
-            <Button
-              onClick={handleSendMessage}
-              disabled={!input.trim() || isProcessing}
-              className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground dark:bg-[#2d2d2d] dark:hover:bg-[#3d3d3d]"
-              size="icon"
-            >
-              <Send className="h-4 w-4 text-white" />
-              <span className="sr-only">Send</span>
-            </Button>
+            {isStreaming ? (
+              <Button
+                onClick={handleStopStreaming}
+                className="rounded-full bg-red-500 hover:bg-red-600 text-white"
+                size="icon"
+                title="Stop AI response"
+              >
+                <StopCircle className="h-4 w-4" />
+                <span className="sr-only">Stop</span>
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSendMessage}
+                disabled={(!input.trim() && !selectedFile) || isProcessing || isRecording}
+                className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground dark:bg-[#2d2d2d] dark:hover:bg-[#3d3d3d]"
+                size="icon"
+                title="Send message"
+              >
+                <Send className="h-4 w-4 text-white" />
+                <span className="sr-only">Send</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>

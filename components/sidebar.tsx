@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Search, MoreHorizontal, Check, X, Menu, Plus } from "lucide-react"
+import { Search, MoreHorizontal, Check, X, Menu, Plus, Upload } from "lucide-react"
 import type { FileCategory } from "@/types/file"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -115,10 +115,14 @@ export function Sidebar({
                     </TabsTrigger>
                     <TabsTrigger 
                       value="upload" 
-                      className="w-full justify-start rounded-none text-foreground dark:text-white data-[state=active]:bg-background dark:data-[state=active]:bg-black hover:bg-accent dark:hover:bg-white/5 text-sm"
+                      className="w-full justify-start rounded-none text-foreground dark:text-white data-[state=active]:bg-background dark:data-[state=active]:bg-black hover:bg-accent dark:hover:bg-white/5 text-sm group relative transition-colors duration-200"
                       onClick={() => router.push('/upload')}
                     >
-                      Upload
+                      <div className="flex items-center gap-2">
+                        <Upload className="h-4 w-4" />
+                        <span>Upload</span>
+                      </div>
+                      <div className="absolute inset-0 bg-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                     </TabsTrigger>
                   </TabsList>
                 </div>
@@ -136,8 +140,12 @@ export function Sidebar({
                   value="upload" 
                   className="p-2 bg-background dark:bg-black border-b border-border dark:border-white/10"
                 >
-                  <div className="rounded-lg border border-border dark:border-white/10 bg-background dark:bg-black p-2">
-                    <p className="text-muted-foreground dark:text-white/70 text-sm">Upload functionality coming soon</p>
+                  <div className="rounded-lg border border-border dark:border-white/10 bg-background dark:bg-black p-4">
+                    <div className="flex flex-col items-center gap-2 text-center">
+                      <Upload className="h-8 w-8 text-primary" />
+                      <h3 className="font-medium">Upload Your Files</h3>
+                      <p className="text-sm text-muted-foreground">Click to upload or drag and drop your files here</p>
+                    </div>
                   </div>
                 </TabsContent>
               </Tabs>
