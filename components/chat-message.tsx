@@ -20,9 +20,12 @@ interface PDFAnnotation {
   type: "highlight" | "comment"
 }
 
-// Utility to remove source references like [5:1†source] or 【5:1†source】
+// Utility to remove source references like [5:0†source], [5:0†day 1.txt], 【5:0†source】, or 【5:0†day 1.txt】
 function removeSources(text: string) {
-  return text.replace(/(\[\d+:\d+†source\]|【\d+:\d+†source】)/g, "");
+  // Remove all source references like [5:0†source], [5:0†day 1.txt], 【5:0†source】, or 【5:0†day 1.txt】
+  let cleaned = text.replace(/(\[.*?†.*?\]|【.*?†.*?】)/g, "");
+  // Remove any trailing whitespace
+  return cleaned.trim();
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {

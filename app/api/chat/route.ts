@@ -49,62 +49,50 @@ export async function POST(req: Request) {
       })
     }
 
-    // 3. Run the assistant on the thread and get the full response (not streaming)
-    const run = await openai.beta.threads.runs.create(threadId, {
+    // 3. Run the assistant on the thread and stream the response
+    const runStream = openai.beta.threads.runs.stream(threadId, {
       assistant_id: process.env.ASSISTANT_ID || "",
-    });
+      // Optionally, you can add more options here
+    })
 
-    // 4. Poll for completion and get the messages
-    let runStatus = run.status;
-    let runId = run.id;
-    while (runStatus !== "completed" && runStatus !== "failed" && runStatus !== "cancelled") {
-      await new Promise(res => setTimeout(res, 1000));
-      const updatedRun = await openai.beta.threads.runs.retrieve(threadId, runId);
-      runStatus = updatedRun.status;
-    }
-
-    // 5. Get the latest assistant message
-    const threadMessages = await openai.beta.threads.messages.list(threadId);
-    const assistantMsg = threadMessages.data.find((m: any) => m.role === "assistant");
-    let answer = "";
-    if (assistantMsg && Array.isArray(assistantMsg.content)) {
-      answer = assistantMsg.content
-        .map((c: any) => {
-          if (c && typeof c.text === "object" && typeof c.text.value === "string") return c.text.value;
-          if (typeof c.text === "string") return c.text;
-          if (typeof c === "string") return c;
-          return "";
-        })
-        .join("");
-    }
-
-    // 6. Check for source/citation references
-    const hasSource = /(\[\d+:\d+†source\]|【\d+:\d+†source】)/.test(answer);
-
-    // 7. If no source, fall back to GPT-4
-    if (!hasSource) {
-      const gpt4 = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: messages.map((msg: ChatMessage) => ({
-          role: msg.role,
-          content: msg.content
-        })),
-        temperature: detailedMode ? 0.7 : 0.5,
-      });
-      answer = gpt4.choices[0]?.message?.content || "";
-    }
-
-    // 8. Stream the answer to the client
-    const encoder = new TextEncoder();
+    // 4. Stream the assistant's response back to the client
+    const encoder = new TextEncoder()
     const customReadable = new ReadableStream({
       async start(controller) {
         try {
-          // Stream the answer in chunks (simulate streaming)
-          const chunkSize = 512;
-          for (let i = 0; i < answer.length; i += chunkSize) {
-            const chunk = answer.slice(i, i + chunkSize);
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: chunk })}\n\n`));
-            await new Promise(res => setTimeout(res, 20));
+          for await (const event of runStream) {
+            if (
+              'data' in event &&
+              event.data &&
+              'delta' in event.data &&
+              event.data.delta &&
+              'content' in event.data.delta
+            ) {
+              const deltaContent = (event.data.delta as any).content;
+              let content = "";
+              if (Array.isArray(deltaContent)) {
+                deltaContent.forEach((c: any, idx: number) => {
+                  console.log("parsed.content item", idx, c, typeof c, Object.keys(c));
+                });
+                content = deltaContent
+                  .map((c: any) => {
+                    // If c.text is an object with a value property, use that
+                    if (c && typeof c.text === "object" && typeof c.text.value === "string") return c.text.value;
+                    // If c.text is a string, use it
+                    if (typeof c.text === "string") return c.text;
+                    // If c is a string, use it
+                    if (typeof c === "string") return c;
+                    // Fallback: empty string
+                    return "";
+                  })
+                  .join("");
+              } else if (typeof deltaContent === "string") {
+                content = deltaContent;
+              }
+              if (content) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+              }
+            }
           }
           controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
           controller.close();
@@ -120,7 +108,7 @@ export async function POST(req: Request) {
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
       },
-    });
+    })
   } catch (error) {
     console.error("Error in chat API:", error)
     return new Response(JSON.stringify({ error: "Failed to process your request" }), { status: 500 })
