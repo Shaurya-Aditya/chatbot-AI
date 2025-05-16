@@ -421,17 +421,7 @@ export function ChatInterface({
           />
 
           <div className="absolute right-3 bottom-3 flex items-center space-x-2">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={handleAttachFile} 
-              disabled={isProcessing || isRecording} 
-              title="Attach file"
-              className={selectedFile ? "text-primary" : ""}
-            >
-              <Paperclip className="h-4 w-4" />
-              <span className="sr-only">Attach file</span>
-            </Button>
+            
 
             <Button 
               variant="ghost" 
