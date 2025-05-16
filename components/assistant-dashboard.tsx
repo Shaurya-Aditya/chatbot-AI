@@ -1,13 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { ChatInterface } from "@/components/chat-interface"
 import { Sidebar } from "@/components/sidebar"
 import type { SystemStatus } from "@/types/system-status"
 import type { Message, MessageType, MessageRole } from "@/types/message"
 import { v4 as uuidv4 } from 'uuid'
-import { useEffect } from "react"
+
+interface Thread {
+  id: string;
+  name: string;
+  messages: Message[];
+}
 
 export function AssistantDashboard() {
   const [systemStatus, setSystemStatus] = useState<SystemStatus>({
@@ -24,17 +29,64 @@ export function AssistantDashboard() {
     timestamp: new Date(),
   };
 
-  const [threads, setThreads] = useState([
-    {
+  // Load threads from localStorage on component mount
+  const [threads, setThreads] = useState(() => {
+    if (typeof window === 'undefined') return [{
       id: uuidv4(),
       name: "New Chat",
       messages: [defaultAssistantMessage],
-    },
-  ]);
-  const [selectedThreadId, setSelectedThreadId] = useState(threads[0].id);
+    }];
+
+    const savedThreads = localStorage.getItem('chat-threads');
+    if (savedThreads) {
+      try {
+        const parsedThreads = JSON.parse(savedThreads);
+        // Convert string timestamps back to Date objects
+        return parsedThreads.map((thread: any) => ({
+          ...thread,
+          messages: thread.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }))
+        }));
+      } catch (e) {
+        console.error('Error parsing saved threads:', e);
+        return [{
+          id: uuidv4(),
+          name: "New Chat",
+          messages: [defaultAssistantMessage],
+        }];
+      }
+    }
+    return [{
+      id: uuidv4(),
+      name: "New Chat",
+      messages: [defaultAssistantMessage],
+    }];
+  });
+
+  // Save threads to localStorage whenever they change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('chat-threads', JSON.stringify(threads));
+    }
+  }, [threads]);
+
+  const [selectedThreadId, setSelectedThreadId] = useState(() => {
+    if (typeof window === 'undefined') return threads[0].id;
+    const savedThreadId = localStorage.getItem('selected-thread-id');
+    return savedThreadId || threads[0].id;
+  });
+
+  // Save selected thread ID to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('selected-thread-id', selectedThreadId);
+    }
+  }, [selectedThreadId]);
 
   const handleNewChat = () => {
-    const newThread = {
+    const newThread: Thread = {
       id: uuidv4(),
       name: "New Chat",
       messages: [
@@ -47,13 +99,13 @@ export function AssistantDashboard() {
         },
       ],
     };
-    setThreads((prev) => [...prev, newThread]);
+    setThreads((prev: Thread[]) => [...prev, newThread]);
     setSelectedThreadId(newThread.id);
   };
 
   const setMessages = (updater: (prev: Message[]) => Message[]) => {
-    setThreads((prevThreads) =>
-      prevThreads.map((thread) =>
+    setThreads((prevThreads: Thread[]) =>
+      prevThreads.map((thread: Thread) =>
         thread.id === selectedThreadId
           ? {
               ...thread,
@@ -89,27 +141,33 @@ export function AssistantDashboard() {
     );
   };
 
-  const selectedThread = threads.find((t) => t.id === selectedThreadId);
+  const selectedThread = threads.find((t: Thread) => t.id === selectedThreadId);
 
   const handleDeleteThread = (id: string) => {
-    setThreads((prev) => prev.filter((thread) => thread.id !== id));
+    setThreads((prev: Thread[]) => prev.filter((thread: Thread) => thread.id !== id));
     // If the deleted thread was selected, select another
     if (selectedThreadId === id && threads.length > 1) {
-      const nextThread = threads.find((t) => t.id !== id);
+      const nextThread = threads.find((t: Thread) => t.id !== id);
       if (nextThread) setSelectedThreadId(nextThread.id);
     }
   };
 
   const handleRenameThread = (id: string, newName: string) => {
-    setThreads((prev) =>
-      prev.map((thread) =>
+    setThreads((prev: { id: string }[]) =>
+      prev.map((thread: { id: string }) =>
         thread.id === id ? { ...thread, name: newName } : thread
       )
     );
   };
 
   const handleThreadNameUpdate = (newName: string) => {
-    handleRenameThread(selectedThreadId, newName);
+    setThreads((prev: Thread[]) =>
+      prev.map((thread: Thread) =>
+        thread.id === selectedThreadId
+          ? { ...thread, name: newName }
+          : thread
+      )
+    );
   };
 
   return (
