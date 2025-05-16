@@ -17,10 +17,10 @@ export default function DocumentsPage() {
       <Button
         variant="ghost"
         onClick={() => router.push('/')}
-        className="fixed left-4 top-20 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500/10 to-purple-500/10 hover:from-blue-500/20 hover:to-purple-500/20 dark:from-blue-500/20 dark:to-purple-500/20 dark:hover:from-blue-500/30 dark:hover:to-purple-500/30 backdrop-blur-sm border border-border/50 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 z-50"
+        className="fixed left-4 top-20 flex items-center gap-2 px-4 py-2 bg-black text-white hover:bg-white hover:text-black border border-black rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 z-50"
       >
-        <ArrowLeft className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        <span className="font-medium bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+        <ArrowLeft className="h-4 w-4" />
+        <span className="font-medium">
           Back to Chat Area
         </span>
       </Button>

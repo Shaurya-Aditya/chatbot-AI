@@ -20,6 +20,11 @@ interface PDFAnnotation {
   type: "highlight" | "comment"
 }
 
+// Utility to remove source references like [5:1†source] or 【5:1†source】
+function removeSources(text: string) {
+  return text.replace(/(\[\d+:\d+†source\]|【\d+:\d+†source】)/g, "");
+}
+
 export function ChatMessage({ message }: ChatMessageProps) {
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -129,14 +134,16 @@ export function ChatMessage({ message }: ChatMessageProps) {
             </div>
           </div>
           {message.content !== `Attached file: ${message.file.name}` && (
-            <div className={cn("mt-2 whitespace-pre-wrap", "text-black")}>{message.content}</div>
+            <div className={cn("mt-2 whitespace-pre-wrap", "text-black")}>{removeSources(message.content)}</div>
           )}
         </div>
       )
     }
-    return <div className={cn("whitespace-pre-wrap", "text-black")}>{message.content}</div>
+    return <div className={cn("whitespace-pre-wrap", "text-black")}>{removeSources(message.content)}</div>
   }
 
+  // Debug log for message content
+  console.log("Rendering message.content:", message.content, typeof message.content);
   return (
     <>
       <div className={cn("flex items-start gap-4 pr-5", isUser ? "flex-row-reverse" : "flex-row")}>

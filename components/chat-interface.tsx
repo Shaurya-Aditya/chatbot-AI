@@ -224,14 +224,26 @@ export function ChatInterface({
 
             try {
               const parsed = JSON.parse(data)
-              if (parsed.content) {
-                accumulatedContent += parsed.content
+              let newContent = "";
+              if (Array.isArray(parsed.content)) {
+                newContent = parsed.content
+                  .filter((c: any) => typeof c.text === "string")
+                  .map((c: any) => c.text)
+                  .join("");
+              } else if (typeof parsed.content === "string") {
+                newContent = parsed.content;
+              }
+              console.log("Parsed content from stream:", parsed.content);
+              console.log("Accumulated content before update:", accumulatedContent);
+              if (newContent) {
+                accumulatedContent += newContent;
+                console.log("Accumulated content after update:", accumulatedContent);
                 // Update only the AI message content in real-time
                 setMessages((prev) =>
                   prev.map((msg) => {
                     if (msg.role === 'user') return msg;
                     return msg.id === tempMessageId
-                      ? { ...msg, content: accumulatedContent }
+                      ? { ...msg, content: String(accumulatedContent) }
                       : msg;
                   })
                 )
