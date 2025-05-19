@@ -141,11 +141,7 @@ export function Sidebar({
                   className="p-2 bg-background dark:bg-black border-b border-border dark:border-white/10"
                 >
                   <div className="rounded-lg border border-border dark:border-white/10 bg-background dark:bg-black p-4">
-                    <div className="flex flex-col items-center gap-2 text-center">
-                      <Upload className="h-8 w-8 text-primary" />
-                      <h3 className="font-medium">Upload Your Files</h3>
-                      <p className="text-sm text-muted-foreground">Click to upload or drag and drop your files here</p>
-                    </div>
+                    {/* Upload icon removed, tab is now empty */}
                   </div>
                 </TabsContent>
               </Tabs>

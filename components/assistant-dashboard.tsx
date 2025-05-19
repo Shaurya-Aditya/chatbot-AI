@@ -21,20 +21,13 @@ export function AssistantDashboard() {
   })
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
-  const defaultAssistantMessage = {
-    id: "1",
-    content: "Hello! I'm your AI assistant. How can I help you today?",
-    type: "text" as MessageType,
-    role: "assistant" as MessageRole,
-    timestamp: new Date(),
-  };
-
+ 
   // Load threads from localStorage on component mount
   const [threads, setThreads] = useState(() => {
     if (typeof window === 'undefined') return [{
       id: uuidv4(),
       name: "New Chat",
-      messages: [defaultAssistantMessage],
+      messages: [], // Start with no messages
     }];
 
     const savedThreads = localStorage.getItem('chat-threads');
@@ -54,14 +47,14 @@ export function AssistantDashboard() {
         return [{
           id: uuidv4(),
           name: "New Chat",
-          messages: [defaultAssistantMessage],
+          messages: [], // Start with no messages
         }];
       }
     }
     return [{
       id: uuidv4(),
       name: "New Chat",
-      messages: [defaultAssistantMessage],
+      messages: [], // Start with no messages
     }];
   });
 
@@ -89,15 +82,7 @@ export function AssistantDashboard() {
     const newThread: Thread = {
       id: uuidv4(),
       name: "New Chat",
-      messages: [
-        {
-          ...defaultAssistantMessage,
-          id: Date.now().toString(),
-          timestamp: new Date(),
-          type: "text" as MessageType,
-          role: "assistant" as MessageRole,
-        },
-      ],
+      messages: [], // Start with no messages
     };
     setThreads((prev: Thread[]) => [...prev, newThread]);
     setSelectedThreadId(newThread.id);

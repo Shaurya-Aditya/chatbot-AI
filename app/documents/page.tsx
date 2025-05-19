@@ -24,9 +24,9 @@ export default function DocumentsPage() {
           Back to Chat Area
         </span>
       </Button>
-      <main className="flex-1 flex flex-col items-center p-4 mt-16">
-        <div className="w-full max-w-4xl bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl p-8 flex flex-col gap-6 border border-border dark:border-zinc-800 transition-all">
-          <div className="flex flex-col gap-2">
+      <main className="flex-1 flex flex-col items-center p-4 mt-24 md:mt-16">
+        <div className="w-full max-w-4xl bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl p-8 flex flex-col gap-8 border border-border dark:border-zinc-800 transition-all">
+          <div className="flex flex-col gap-4">
             <h1 className="text-3xl font-extrabold text-center text-foreground dark:text-white tracking-tight">Your Documents</h1>
             <p className="text-center text-muted-foreground dark:text-zinc-400">Manage and organize your uploaded documents</p>
           </div>

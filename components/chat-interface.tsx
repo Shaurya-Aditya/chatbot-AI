@@ -366,7 +366,9 @@ export function ChatInterface({
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-w-2 scrollbar-track-blue-lighter scrollbar-thumb-blue scrollbar-thumb-rounded">
         <div className="max-w-3xl mx-auto w-full">
           {messages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
+            <div className="mb-6">
+              <ChatMessage key={message.id} message={message} />
+            </div>
           ))}
           <div ref={messagesEndRef} />
         </div>
