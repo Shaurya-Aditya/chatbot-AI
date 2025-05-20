@@ -29,9 +29,24 @@ export function FileList({ searchQuery, category }: FileListProps) {
       setLoading(true)
       setError(null)
       try {
+        console.log('Fetching files from API...');
         const res = await fetch("/api/documents")
         const data = await res.json()
-        if (!data.success) throw new Error(data.error || "Failed to fetch files")
+        console.log('API response:', data);
+        
+        if (!res.ok) {
+          throw new Error(data.details || data.error || `HTTP error! status: ${res.status}`);
+        }
+        
+        if (!data.success) {
+          throw new Error(data.error || "Failed to fetch files");
+        }
+        
+        if (!Array.isArray(data.files)) {
+          console.error('Invalid files data:', data);
+          throw new Error("Invalid response format from server");
+        }
+        
         const mapped: FileItem[] = (data.files || []).map((file: any) => ({
           id: file.id,
           name: file.filename || file.name || "Untitled",
@@ -39,15 +54,22 @@ export function FileList({ searchQuery, category }: FileListProps) {
           size: file.bytes ? file.bytes : 0,
           uploadedAt: file.created_at ? new Date(file.created_at * 1000) : new Date(),
         }))
+        console.log('Mapped files:', mapped);
         setFiles(mapped)
       } catch (e: any) {
-        setError(e.message || "Unknown error")
+        console.error('Error fetching files:', e);
+        setError(e.message || "Unknown error occurred while fetching files");
+        toast({
+          title: "Error loading documents",
+          description: e.message || "Could not load your documents. Please try again later.",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false)
       }
     }
     fetchFiles()
-  }, [])
+  }, [toast])
 
   const handleView = (id: string) => {
     router.push(`/documents/${id}`)

@@ -20,31 +20,48 @@ export async function POST(req: NextRequest) {
       file,
       purpose: "assistants"
     });
+
     // Step 2: Add the uploaded file to the vector store
     const response = await openai.vectorStores.files.create(VECTOR_STORE_ID, {
       file_id: uploadedFile.id,
     });
 
-    // Step 3: Save mapping to local JSON file
-    const mapping = {
-      vector_store_file_id: response.id,
-      original_file_id: uploadedFile.id,
-      filename: (file as File).name || 'unknown',
-      created_at: Date.now(),
-    };
-    let mappings: any[] = [];
+    // Step 3: Try to save mapping to local JSON file, but don't fail if it doesn't work
     try {
-      const data = await fs.readFile(MAPPING_FILE, 'utf-8');
-      mappings = JSON.parse(data);
-    } catch (e) {
-      // File may not exist yet
-      mappings = [];
+      const mapping = {
+        vector_store_file_id: response.id,
+        original_file_id: uploadedFile.id,
+        filename: (file as File).name || 'unknown',
+        created_at: Date.now(),
+      };
+      let mappings: any[] = [];
+      try {
+        const data = await fs.readFile(MAPPING_FILE, 'utf-8');
+        mappings = JSON.parse(data);
+      } catch (e) {
+        // File may not exist yet
+        mappings = [];
+      }
+      mappings.push(mapping);
+      await fs.writeFile(MAPPING_FILE, JSON.stringify(mappings, null, 2), 'utf-8');
+    } catch (mappingError) {
+      // Log the error but don't fail the request
+      console.error('Failed to save file mapping:', mappingError);
     }
-    mappings.push(mapping);
-    await fs.writeFile(MAPPING_FILE, JSON.stringify(mappings, null, 2), 'utf-8');
 
-    return NextResponse.json({ success: true, data: response }, { status: 200 });
+    return NextResponse.json({ 
+      success: true, 
+      data: {
+        ...response,
+        filename: (file as File).name || 'unknown',
+        original_file_id: uploadedFile.id
+      }
+    }, { status: 200 });
   } catch (e: any) {
-    return NextResponse.json({ error: 'Upload failed', details: e.message || e.toString() }, { status: 500 });
+    console.error('Upload error:', e);
+    return NextResponse.json({ 
+      error: 'Upload failed', 
+      details: e.message || e.toString() 
+    }, { status: 500 });
   }
 } 

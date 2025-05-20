@@ -73,23 +73,25 @@ export default function UploadPage() {
     xhr.onload = () => {
       setLoading(false);
       setProgress(100);
-      if (xhr.status >= 200 && xhr.status < 300) {
-        setStatus('Upload successful!');
-        setTimeout(() => {
-          resetForm();
-        }, 1500);
-      } else {
-        try {
-          const error = JSON.parse(xhr.responseText);
-          setStatus('Upload failed: ' + (error.details || error.error || 'Unknown error'));
-        } catch {
-          setStatus('Upload failed.');
+      try {
+        const response = JSON.parse(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300 && response.success) {
+          setStatus('Upload successful!');
+          setTimeout(() => {
+            resetForm();
+          }, 1500);
+        } else {
+          setStatus('Upload failed: ' + (response.details || response.error || 'Unknown error'));
         }
+      } catch (e) {
+        console.error('Error parsing response:', e);
+        setStatus('Upload failed: Invalid server response');
       }
     };
     xhr.onerror = () => {
       setLoading(false);
-      setStatus('Upload failed.');
+      setProgress(0);
+      setStatus('Upload failed: Network error. Please check your connection and try again.');
     };
     xhr.send(formData);
   };
