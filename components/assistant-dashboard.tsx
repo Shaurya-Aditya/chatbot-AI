@@ -1,18 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Header } from "@/components/header"
 import { ChatInterface } from "@/components/chat-interface"
 import { Sidebar } from "@/components/sidebar"
 import type { SystemStatus } from "@/types/system-status"
-import type { Message, MessageType, MessageRole } from "@/types/message"
-import { v4 as uuidv4 } from 'uuid'
-
-interface Thread {
-  id: string;
-  name: string;
-  messages: Message[];
-}
+import { useThreads } from "@/hooks/useThreads"
+import { useMessages } from "@/hooks/useMessages"
 
 export function AssistantDashboard() {
   const [systemStatus, setSystemStatus] = useState<SystemStatus>({
@@ -20,140 +14,43 @@ export function AssistantDashboard() {
     message: "System ready",
   })
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [selectedThreadId, setSelectedThreadId] = useState<string | undefined>(undefined)
 
- 
-  // Load threads from localStorage on component mount
-  const [threads, setThreads] = useState(() => {
-    if (typeof window === 'undefined') return [{
-      id: uuidv4(),
-      name: "New Chat",
-      messages: [], // Start with no messages
-    }];
+  const { 
+    threads, 
+    loading: threadsLoading, 
+    createThread, 
+    renameThread, 
+    deleteThread 
+  } = useThreads()
 
-    const savedThreads = localStorage.getItem('chat-threads');
-    if (savedThreads) {
-      try {
-        const parsedThreads = JSON.parse(savedThreads);
-        // Convert string timestamps back to Date objects
-        return parsedThreads.map((thread: any) => ({
-          ...thread,
-          messages: thread.messages.map((msg: any) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp)
-          }))
-        }));
-      } catch (e) {
-        console.error('Error parsing saved threads:', e);
-        return [{
-          id: uuidv4(),
-          name: "New Chat",
-          messages: [], // Start with no messages
-        }];
-      }
+  const { 
+    messages, 
+    loading: messagesLoading, 
+    addMessage 
+  } = useMessages(selectedThreadId)
+
+  const handleNewChat = async () => {
+    const newThread = await createThread("New Chat")
+    setSelectedThreadId(newThread.id)
+  }
+
+  const handleDeleteThread = async (id: string) => {
+    await deleteThread(id)
+    if (selectedThreadId === id) {
+      setSelectedThreadId(undefined)
     }
-    return [{
-      id: uuidv4(),
-      name: "New Chat",
-      messages: [], // Start with no messages
-    }];
-  });
+  }
 
-  // Save threads to localStorage whenever they change
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('chat-threads', JSON.stringify(threads));
+  const handleRenameThread = async (id: string, newName: string) => {
+    await renameThread(id, newName)
+  }
+
+  const handleThreadNameUpdate = async (newName: string) => {
+    if (selectedThreadId) {
+      await renameThread(selectedThreadId, newName)
     }
-  }, [threads]);
-
-  const [selectedThreadId, setSelectedThreadId] = useState(() => {
-    if (typeof window === 'undefined') return threads[0].id;
-    const savedThreadId = localStorage.getItem('selected-thread-id');
-    return savedThreadId || threads[0].id;
-  });
-
-  // Save selected thread ID to localStorage whenever it changes
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('selected-thread-id', selectedThreadId);
-    }
-  }, [selectedThreadId]);
-
-  const handleNewChat = () => {
-    const newThread: Thread = {
-      id: uuidv4(),
-      name: "New Chat",
-      messages: [], // Start with no messages
-    };
-    setThreads((prev: Thread[]) => [...prev, newThread]);
-    setSelectedThreadId(newThread.id);
-  };
-
-  const setMessages = (updater: (prev: Message[]) => Message[]) => {
-    setThreads((prevThreads: Thread[]) =>
-      prevThreads.map((thread: Thread) =>
-        thread.id === selectedThreadId
-          ? {
-              ...thread,
-              messages: (() => {
-                const updatedMessages = typeof updater === 'function' 
-                  ? updater(thread.messages)
-                  : updater;
-                
-                // Update thread name if this is the first user message
-                if (updatedMessages.length > 0) {
-                  const firstUserMessage = updatedMessages.find(msg => msg.role === 'user');
-                  if (firstUserMessage && thread.name.startsWith('Thread')) {
-                    // Use first 30 characters of the message as thread name
-                    const newName = firstUserMessage.content.slice(0, 30) + (firstUserMessage.content.length > 30 ? '...' : '');
-                    thread.name = newName;
-                  }
-                }
-
-                // Ensure user messages are preserved exactly as they were
-                return updatedMessages.map((msg: Message) => {
-                  if (msg.role === 'user') {
-                    return {
-                      ...msg,
-                      content: msg.content // Preserve exact user input
-                    };
-                  }
-                  return msg;
-                });
-              })()
-            }
-          : thread
-      )
-    );
-  };
-
-  const selectedThread = threads.find((t: Thread) => t.id === selectedThreadId);
-
-  const handleDeleteThread = (id: string) => {
-    setThreads((prev: Thread[]) => prev.filter((thread: Thread) => thread.id !== id));
-    // If the deleted thread was selected, select another
-    if (selectedThreadId === id && threads.length > 1) {
-      const nextThread = threads.find((t: Thread) => t.id !== id);
-      if (nextThread) setSelectedThreadId(nextThread.id);
-    }
-  };
-
-  const handleRenameThread = (id: string, newName: string) => {
-    setThreads((prev: { id: string }[]) =>
-      prev.map((thread: { id: string }) =>
-        thread.id === id ? { ...thread, name: newName } : thread
-      )
-    );
-  };
-
-  const handleThreadNameUpdate = (newName: string) => {
-    setThreads((prev: Thread[]) =>
-      prev.map((thread: Thread) =>
-        thread.id === selectedThreadId
-          ? { ...thread, name: newName }
-          : thread
-      )
-    );
-  };
+  }
 
   return (
     <div className="flex h-screen flex-col">
@@ -172,11 +69,12 @@ export function AssistantDashboard() {
         <main className="flex-1 overflow-hidden transition-all duration-300">
           <ChatInterface
             onStatusChange={setSystemStatus}
-            messages={selectedThread ? selectedThread.messages : []}
-            setMessages={setMessages}
+            messages={messages}
+            setMessages={() => {}} // Not needed as we use addMessage
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
             sidebarOpen={sidebarOpen}
             onThreadNameUpdate={handleThreadNameUpdate}
+            addMessage={addMessage}
           />
         </main>
       </div>

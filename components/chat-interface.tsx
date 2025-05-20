@@ -22,6 +22,7 @@ interface ChatInterfaceProps {
   onToggleSidebar?: () => void
   sidebarOpen?: boolean
   onThreadNameUpdate?: (threadName: string) => void
+  addMessage?: (role: string, content: string) => Promise<any>
 }
 
 export function ChatInterface({ 
@@ -30,7 +31,8 @@ export function ChatInterface({
   setMessages, 
   onToggleSidebar,
   sidebarOpen,
-  onThreadNameUpdate
+  onThreadNameUpdate,
+  addMessage
 }: ChatInterfaceProps) {
   const [input, setInput] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
@@ -145,16 +147,19 @@ export function ChatInterface({
       } : undefined
     }
 
-    // Add user message immediately
+    // Add user message to backend if addMessage is provided
+    if (addMessage) {
+      await addMessage("user", input.trim())
+      // Update thread name if this is the first message
+      if (messages.length === 0 && onThreadNameUpdate) {
+        const threadName = input.trim().slice(0, 30) + (input.trim().length > 30 ? '...' : '')
+        onThreadNameUpdate(threadName)
+      }
+    }
+
+    // Add user message immediately to UI
     setMessages((prev) => {
       const updatedMessages = [...prev]
-      const isFirstUserMessage = !updatedMessages.some(msg => msg.role === 'user')
-      if (isFirstUserMessage && input.trim()) {
-        const threadName = input.trim().slice(0, 30) + (input.trim().length > 30 ? '...' : '')
-        if (onThreadNameUpdate) {
-          onThreadNameUpdate(threadName)
-        }
-      }
       updatedMessages.push(userMessage)
       return updatedMessages
     })
@@ -234,6 +239,15 @@ export function ChatInterface({
               }
               if (newContent) {
                 accumulatedContent += newContent;
+                // Update only the AI message content in real-time
+                setMessages((prev) =>
+                  prev.map((msg) => {
+                    if (msg.role === 'user') return msg;
+                    return msg.id === tempMessageId
+                      ? { ...msg, content: String(accumulatedContent) }
+                      : msg;
+                  })
+                )
               }
             } catch (e) {
               console.error("Error parsing streaming response:", e)
@@ -241,15 +255,12 @@ export function ChatInterface({
           }
         }
       }
-      // After the stream is done, update the message ONCE
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (msg.role === 'user') return msg;
-          return msg.id === tempMessageId
-            ? { ...msg, content: String(accumulatedContent) }
-            : msg;
-        })
-      );
+
+      // After streaming is complete, save the assistant's message to Supabase
+      if (addMessage) {
+        await addMessage("assistant", accumulatedContent)
+      }
+
     } catch (error: unknown) {
       if (error instanceof Error && error.name === 'AbortError') {
         // Don't remove the message on abort, just stop streaming

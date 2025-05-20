@@ -38,7 +38,7 @@ export function Sidebar({
 
   // Filter threads based on search query
   const filteredThreads = threads.filter(thread => 
-    thread.name.toLowerCase().includes(searchQuery.toLowerCase())
+    thread?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false
   )
 
   const handleRenameClick = (thread: { id: string; name: string }) => {
