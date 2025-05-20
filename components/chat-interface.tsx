@@ -232,20 +232,8 @@ export function ChatInterface({
               } else if (typeof parsed.content === "string") {
                 newContent = parsed.content;
               }
-              console.log("Parsed content from stream:", parsed.content);
-              console.log("Accumulated content before update:", accumulatedContent);
               if (newContent) {
                 accumulatedContent += newContent;
-                console.log("Accumulated content after update:", accumulatedContent);
-                // Update only the AI message content in real-time
-                setMessages((prev) =>
-                  prev.map((msg) => {
-                    if (msg.role === 'user') return msg;
-                    return msg.id === tempMessageId
-                      ? { ...msg, content: String(accumulatedContent) }
-                      : msg;
-                  })
-                )
               }
             } catch (e) {
               console.error("Error parsing streaming response:", e)
@@ -253,6 +241,15 @@ export function ChatInterface({
           }
         }
       }
+      // After the stream is done, update the message ONCE
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.role === 'user') return msg;
+          return msg.id === tempMessageId
+            ? { ...msg, content: String(accumulatedContent) }
+            : msg;
+        })
+      );
     } catch (error: unknown) {
       if (error instanceof Error && error.name === 'AbortError') {
         // Don't remove the message on abort, just stop streaming
