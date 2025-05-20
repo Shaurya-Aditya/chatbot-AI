@@ -108,10 +108,13 @@ export function Sidebar({
                   <TabsList className="w-full flex flex-col h-auto p-0 bg-background dark:bg-black">
                     <TabsTrigger 
                       value="documents" 
-                      className="w-full justify-start rounded-none border-b border-border dark:border-white/10 data-[state=active]:border-b-0 text-foreground dark:text-white data-[state=active]:bg-background dark:data-[state=active]:bg-black hover:bg-accent dark:hover:bg-white/5 text-sm"
+                      className="w-full justify-start rounded-none border-b border-border dark:border-white/10 data-[state=active]:border-b-0 text-foreground dark:text-white data-[state=active]:bg-background dark:data-[state=active]:bg-black hover:bg-accent dark:hover:bg-white/5 text-sm group relative transition-colors duration-200"
                       onClick={() => router.push('/documents')}
                     >
-                      Documents
+                      <div className="flex items-center gap-2">
+                        <span>Documents</span>
+                      </div>
+                      <div className="absolute inset-0 bg-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                     </TabsTrigger>
                     <TabsTrigger 
                       value="upload" 

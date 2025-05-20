@@ -12,7 +12,7 @@ interface ChatMessage {
 
 export async function POST(req: Request) {
   try {
-    const { messages, detailedMode } = await req.json()
+    const { messages } = await req.json()
 
     // Get the last message (user's question) exactly as is
     const lastMessage = messages[messages.length - 1]

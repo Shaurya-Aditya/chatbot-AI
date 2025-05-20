@@ -37,7 +37,6 @@ export function ChatInterface({
   const [isStreaming, setIsStreaming] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
-  const [detailedMode, setDetailedMode] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -182,7 +181,7 @@ export function ChatInterface({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           messages: [...messages, userMessage],
-          detailedMode
+          detailedMode: true
         }),
         signal: controller.signal
       })
@@ -355,19 +354,13 @@ export function ChatInterface({
           )}
         </div>
         <div className="flex-1" />
-        <div className="flex items-center space-x-2">
-          <Switch id="detailed-mode" checked={detailedMode} onCheckedChange={setDetailedMode} />
-          <Label htmlFor="detailed-mode" className="text-sm">
-            Detailed responses
-          </Label>
-        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-w-2 scrollbar-track-blue-lighter scrollbar-thumb-blue scrollbar-thumb-rounded">
         <div className="max-w-3xl mx-auto w-full">
           {messages.map((message) => (
-            <div className="mb-6">
-              <ChatMessage key={message.id} message={message} />
+            <div key={message.id} className="mb-6">
+              <ChatMessage message={message} />
             </div>
           ))}
           <div ref={messagesEndRef} />
