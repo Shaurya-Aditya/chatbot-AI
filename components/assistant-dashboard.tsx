@@ -19,7 +19,7 @@ export function AssistantDashboard() {
     status: "connected",
     message: "System ready",
   })
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
  
   // Load threads from localStorage on component mount
