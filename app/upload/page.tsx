@@ -101,7 +101,7 @@ export default function UploadPage() {
       <Header systemStatus={{status: 'connected', message: 'System ready'}} toggleSidebar={() => {}} />
       <Button
         variant="ghost"
-        onClick={() => router.push('/')}
+        onClick={() => router.push('/chat')}
         className="fixed left-4 top-20 flex items-center gap-2 px-4 py-2 bg-black text-white hover:bg-white hover:text-black border border-black rounded-full transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 z-50"
       >
         <ArrowLeft className="h-4 w-4" />
