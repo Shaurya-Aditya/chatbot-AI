@@ -126,37 +126,69 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const renderMessageContent = () => {
     if (message.type === "file" && message.file) {
       return (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 w-full">
           <div className="flex items-center gap-2">
             {getFileIcon(message.file.type)}
-            <div className="flex flex-col">
-              <span className={cn("font-medium", isUser ? "text-white" : "text-black dark:text-black")}>
+            <div className="flex flex-col min-w-0">
+              <span className={cn(
+                "font-medium truncate",
+                isUser ? "text-white" : "text-black dark:text-black"
+              )}>
                 {message.file.name}
               </span>
-              <span className={cn("text-xs", "text-black/70")}>{formatFileSize(message.file.size)}</span>
+              <span className={cn("text-xs", "text-black/70")}>
+                {formatFileSize(message.file.size)}
+              </span>
             </div>
           </div>
           {message.content !== `Attached file: ${message.file.name}` && (
-            <div className={cn("mt-2 whitespace-pre-wrap", "text-black")}>{removeSources(message.content)}</div>
+            <div className={cn(
+              "mt-2 whitespace-pre-wrap break-words",
+              "text-black w-full"
+            )}>
+              {removeSources(message.content)}
+            </div>
           )}
         </div>
       )
     }
-    return <div className={cn("whitespace-pre-wrap", "text-black")}>{removeSources(message.content)}</div>
+    return (
+      <div className={cn(
+        "whitespace-pre-wrap break-words w-full",
+        "text-black"
+      )}>
+        {removeSources(message.content)}
+      </div>
+    )
   }
 
   // Debug log for message content
   console.log("Rendering message.content:", message.content, typeof message.content);
   return (
     <>
-      <div className={cn("flex items-start gap-4 pr-5", isUser ? "flex-row-reverse" : "flex-row")}>
-        <div className={cn("flex flex-col gap-1 max-w-[85%]", isUser ? "items-end" : "items-start")}>
+      <div className={cn(
+        "flex items-start gap-4 pr-5",
+        isUser ? "flex-row-reverse" : "flex-row",
+        "w-full"
+      )}>
+        <div className={cn(
+          "flex flex-col gap-1",
+          isUser ? "items-end ml-auto" : "items-start",
+          "max-w-[85%]"
+        )}>
           <div
             className={cn(
-              "rounded-2xl px-4 py-2 text-sm",
+              "rounded-2xl px-4 py-2 text-sm break-words",
               isUser ? "bg-gray-200 text-black" : "bg-white text-black",
               isSystem && "bg-yellow-100 dark:bg-yellow-900 text-yellow-900 dark:text-yellow-100",
+              "shadow-sm",
+              isUser ? "ml-auto" : ""
             )}
+            style={{
+              wordBreak: "break-word",
+              overflowWrap: "break-word",
+              maxWidth: "100%"
+            }}
           >
             {renderMessageContent()}
           </div>

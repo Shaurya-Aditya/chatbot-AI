@@ -25,6 +25,18 @@ interface ChatInterfaceProps {
   addMessage?: (role: string, content: string) => Promise<any>
 }
 
+// Debounce utility
+function debounce(fn: (...args: any[]) => void, delay: number) {
+  let timer: NodeJS.Timeout | null = null;
+  return (...args: any[]) => {
+    if (timer) return;
+    timer = setTimeout(() => {
+      fn(...args);
+      timer = null;
+    }, delay);
+  };
+}
+
 export function ChatInterface({ 
   onStatusChange, 
   messages, 
@@ -44,6 +56,12 @@ export function ChatInterface({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const { toast } = useToast()
+  const [sendLocked, setSendLocked] = useState(false);
+
+  const debouncedSend = debounce(() => {
+    setSendLocked(true);
+    Promise.resolve(handleSendMessage()).finally(() => setSendLocked(false));
+  }, 1000);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -285,8 +303,10 @@ export function ChatInterface({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
+      e.preventDefault();
+      if (!sendLocked && !isProcessing) {
+        debouncedSend();
+      }
     }
   }
 
@@ -420,7 +440,7 @@ export function ChatInterface({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={isProcessing}
+            disabled={isProcessing || sendLocked}
           />
 
           <div className="absolute right-3 bottom-3 flex items-center space-x-2">
@@ -451,7 +471,7 @@ export function ChatInterface({
             ) : (
               <Button
                 onClick={handleSendMessage}
-                disabled={(!input.trim() && !selectedFile) || isProcessing || isRecording}
+                disabled={(!input.trim() && !selectedFile) || isProcessing || isRecording || sendLocked}
                 className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground dark:bg-[#2d2d2d] dark:hover:bg-[#3d3d3d]"
                 size="icon"
                 title="Send message"
