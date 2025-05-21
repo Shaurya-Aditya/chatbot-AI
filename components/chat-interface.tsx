@@ -23,6 +23,9 @@ interface ChatInterfaceProps {
   sidebarOpen?: boolean
   onThreadNameUpdate?: (threadName: string) => void
   addMessage?: (role: string, content: string) => Promise<any>
+  selectedThreadId?: string
+  setSelectedThreadId?: (id: string) => void
+  createThread?: (name: string) => Promise<any>
 }
 
 // Debounce utility
@@ -44,7 +47,10 @@ export function ChatInterface({
   onToggleSidebar,
   sidebarOpen,
   onThreadNameUpdate,
-  addMessage
+  addMessage,
+  selectedThreadId,
+  setSelectedThreadId,
+  createThread
 }: ChatInterfaceProps) {
   const [input, setInput] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
@@ -57,6 +63,8 @@ export function ChatInterface({
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const { toast } = useToast()
   const [sendLocked, setSendLocked] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const prevThreadIdRef = useRef<string | undefined>(selectedThreadId);
 
   const debouncedSend = debounce(() => {
     setSendLocked(true);
@@ -115,45 +123,18 @@ export function ChatInterface({
     }
   }, [toast])
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      // Check file size (10MB limit)
-      if (file.size > 10 * 1024 * 1024) {
-        toast({
-          title: "File too large",
-          description: "Please select a file smaller than 10MB",
-          variant: "destructive",
-        })
-        return
-      }
-      setSelectedFile(file)
+  // Helper to send a user message and get AI response
+  const sendMessageAndGetAIResponse = async (userMessageContent: string) => {
+    let threadId = selectedThreadId;
+    // Add user message to backend if addMessage is provided
+    if (addMessage && threadId) {
+      await addMessage("user", userMessageContent)
     }
-  }
-
-  const handleRemoveFile = () => {
-    setSelectedFile(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
-    }
-  }
-
-  const handleStopStreaming = () => {
-    if (abortController) {
-      abortController.abort()
-      setIsStreaming(false)
-      setIsProcessing(false)
-      onStatusChange({ status: "connected", message: "System ready" })
-    }
-  }
-
-  const handleSendMessage = async () => {
-    if ((!input.trim() && !selectedFile) || isProcessing) return
 
     // Create user message with content and file if present
     const userMessage: Message = {
       id: uuidv4(),
-      content: input.trim(),
+      content: userMessageContent,
       type: selectedFile ? "file" : "text",
       role: "user",
       timestamp: new Date(),
@@ -163,16 +144,6 @@ export function ChatInterface({
         size: selectedFile.size,
         url: URL.createObjectURL(selectedFile)
       } : undefined
-    }
-
-    // Add user message to backend if addMessage is provided
-    if (addMessage) {
-      await addMessage("user", input.trim())
-      // Update thread name if this is the first message
-      if (messages.length === 0 && onThreadNameUpdate) {
-        const threadName = input.trim().slice(0, 30) + (input.trim().length > 30 ? '...' : '')
-        onThreadNameUpdate(threadName)
-      }
     }
 
     // Add user message immediately to UI
@@ -299,6 +270,79 @@ export function ChatInterface({
       setAbortController(null)
       onStatusChange({ status: "connected", message: "System ready" })
     }
+  };
+
+  useEffect(() => {
+    // If a new thread was just created and there's a pending message, send it
+    if (
+      pendingMessage &&
+      prevThreadIdRef.current !== selectedThreadId &&
+      selectedThreadId &&
+      addMessage
+    ) {
+      sendMessageAndGetAIResponse(pendingMessage);
+      setPendingMessage(null);
+      prevThreadIdRef.current = selectedThreadId;
+    }
+  }, [selectedThreadId, pendingMessage, addMessage]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Check file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select a file smaller than 10MB",
+          variant: "destructive",
+        })
+        return
+      }
+      setSelectedFile(file)
+    }
+  }
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
+  const handleStopStreaming = () => {
+    if (abortController) {
+      abortController.abort()
+      setIsStreaming(false)
+      setIsProcessing(false)
+      onStatusChange({ status: "connected", message: "System ready" })
+    }
+  }
+
+  const handleSendMessage = async () => {
+    if ((!input.trim() && !selectedFile) || isProcessing) return
+
+    let threadId = selectedThreadId;
+    // If no thread exists, create one with the first message as the name
+    if (!threadId && createThread && setSelectedThreadId) {
+      const threadName = input.trim().slice(0, 30) + (input.trim().length > 30 ? '...' : '')
+      const newThread = await createThread(threadName)
+      threadId = newThread.id
+      setSelectedThreadId(threadId)
+      // Optionally update thread name in parent
+      if (onThreadNameUpdate) {
+        onThreadNameUpdate(threadName)
+      }
+      setPendingMessage(input.trim()); // Store the message to send after thread is ready
+      setInput("");
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return; // Wait for useEffect to send the message
+    }
+
+    // Otherwise, send the message and get AI response as usual
+    await sendMessageAndGetAIResponse(input.trim());
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

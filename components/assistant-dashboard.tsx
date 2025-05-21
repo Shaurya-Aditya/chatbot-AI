@@ -75,6 +75,9 @@ export function AssistantDashboard() {
             sidebarOpen={sidebarOpen}
             onThreadNameUpdate={handleThreadNameUpdate}
             addMessage={addMessage}
+            selectedThreadId={selectedThreadId}
+            setSelectedThreadId={setSelectedThreadId}
+            createThread={createThread}
           />
         </main>
       </div>
