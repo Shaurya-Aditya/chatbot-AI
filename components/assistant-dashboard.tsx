@@ -66,10 +66,10 @@ export function AssistantDashboard() {
           onDeleteThread={handleDeleteThread}
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         />
-        <main className="flex-1 overflow-hidden transition-all duration-300">
+        <main className={`flex-1 overflow-hidden transition-all duration-300${sidebarOpen ? ' md:ml-[260px]' : ''}`}>
           <ChatInterface
             onStatusChange={setSystemStatus}
-            messages={messages}
+            messages={selectedThreadId ? messages : []}
             setMessages={() => {}} // Not needed as we use addMessage
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
             sidebarOpen={sidebarOpen}
