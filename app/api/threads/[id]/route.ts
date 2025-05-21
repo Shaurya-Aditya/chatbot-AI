@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { useRef } from 'react';
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_ANON_KEY!
 );
-
-const sendLocked = useRef(false);
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const { id } = params;
