@@ -430,10 +430,13 @@ export function ChatInterface({
         <div className="flex-1" />
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-w-2 scrollbar-track-blue-lighter scrollbar-thumb-blue scrollbar-thumb-rounded">
+      <div
+        ref={messagesEndRef}
+        className="flex-1 overflow-y-auto p-4 pt-4 space-y-4 transition-all duration-300"
+      >
         <div className="max-w-3xl mx-auto w-full">
-          {messages.map((message) => (
-            <div key={message.id} className="mb-6">
+          {messages.map((message, idx) => (
+            <div key={message.id} className={idx === 0 ? "" : "mb-6"}>
               <ChatMessage message={message} />
             </div>
           ))}
