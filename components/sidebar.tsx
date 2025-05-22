@@ -100,8 +100,8 @@ export function Sidebar({
               <span className="sr-only">Close sidebar</span>
             </Button>
 
-            {/* Add top margin container */}
-            <div className="pt-6">
+            {/* Fixed header section */}
+            <div className="flex-none">
               {/* Tabs for Documents and Upload */}
               <Tabs defaultValue="documents" className="flex-none">
                 <div className="border-b border-border dark:border-white/10">
@@ -149,7 +149,7 @@ export function Sidebar({
                 </TabsContent>
               </Tabs>
 
-              {/* New Chat Button - moved closer to tabs */}
+              {/* New Chat Button */}
               <div className="px-4 pt-2 pb-3 border-t border-border dark:border-white/10">
                 <Button
                   variant="outline"
@@ -161,8 +161,8 @@ export function Sidebar({
                 </Button>
               </div>
 
-              {/* Search */}
-              <div className="px-4 pb-2">
+              {/* Search - Fixed position */}
+              <div className="px-4 pb-3 border-t border-border dark:border-white/10">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-foreground dark:text-white/50" />
                   <Input
@@ -174,9 +174,11 @@ export function Sidebar({
                   />
                 </div>
               </div>
+            </div>
 
-              {/* Threads List */}
-              <div className="flex-1 overflow-auto px-2 pb-4">
+            {/* Scrollable threads list */}
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <div className="px-4 pb-4">
                 <h3 className="text-sm font-medium px-2 mb-2 text-foreground dark:text-white/70">
                   {searchQuery ? 'Search Results' : 'Recent Conversations'}
                 </h3>

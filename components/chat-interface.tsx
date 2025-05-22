@@ -327,7 +327,9 @@ export function ChatInterface({
       const threadName = input.trim().slice(0, 30) + (input.trim().length > 30 ? '...' : '')
       const newThread = await createThread(threadName)
       threadId = newThread.id
-      setSelectedThreadId(threadId)
+      if (threadId && setSelectedThreadId) {
+        setSelectedThreadId(threadId)
+      }
       // Optionally update thread name in parent
       if (onThreadNameUpdate) {
         onThreadNameUpdate(threadName)
