@@ -13,35 +13,65 @@ interface ChatMessage {
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json()
-
-    // Get the last message (user's question) exactly as is
     const lastMessage = messages[messages.length - 1]
-    
-    // Check if this is an image generation request
-    const isImageRequest =
-      /create|generate|draw|show me|design|make|visualize/i.test(lastMessage.content) &&
-      /image|picture|logo|graph|chart|diagram|illustration/i.test(lastMessage.content)
 
-    if (isImageRequest) {
-      // In a real implementation, you would call DALL-E 3 here
-      // For now, we'll simulate a response
-      return new Response(
-        JSON.stringify({
-          role: "assistant",
-          content: "I've generated this image based on your request:",
-          type: "image",
-          imageUrl: "/placeholder.svg?height=512&width=512",
-        }),
-        { status: 200 },
-      )
+    // --- If file is attached: Use only file content and user query with Chat API ---
+    if (lastMessage.content?.startsWith("Attached file (")) {
+      const match = lastMessage.content.match(/^Attached file \([^)]+\):\n\n([\s\S]+?)\n\nUser query:/);
+      const fileContent = match ? match[1] : "";
+      const userQuery = lastMessage.content.split("User query:")[1]?.trim() || "";
+
+      const promptMessages: OpenAI.ChatCompletionMessageParam[] = [
+        {
+          role: "system",
+          content: `You are an AI assistant. Use ONLY the following file content to answer the user's question. File content:\n${fileContent}`
+        },
+        {
+          role: "user",
+          content: userQuery
+        }
+      ];
+
+      // Use Chat Completions API (gpt-4o)
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: promptMessages,
+        stream: true,
+      });
+
+      const encoder = new TextEncoder();
+      const customReadable = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of completion) {
+              const content = chunk.choices?.[0]?.delta?.content;
+              if (content) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+              }
+            }
+            controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+            controller.close();
+          } catch (error) {
+            controller.error(error);
+          }
+        },
+      });
+
+      return new Response(customReadable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      })
     }
 
-    // --- Use OpenAI Assistants API for retrieval ---
-    // 1. Create a thread
+    // --- No file attached: Use Assistant API with retrieval, fallback to Chat API if needed ---
+    // Create a thread
     const thread = await openai.beta.threads.create({})
     const threadId = thread.id
 
-    // 2. Add all messages to the thread
+    // Add all messages to the thread
     for (const msg of messages) {
       await openai.beta.threads.messages.create(threadId, {
         role: msg.role,
@@ -49,14 +79,14 @@ export async function POST(req: Request) {
       })
     }
 
-    // 3. Run the assistant on the thread and stream the response
+    // Run the assistant with retrieval
     const runStream = openai.beta.threads.runs.stream(threadId, {
       assistant_id: process.env.ASSISTANT_ID || "",
-      // Optionally, you can add more options here
     })
 
-    // 4. Stream the assistant's response back to the client
-    const encoder = new TextEncoder()
+    let foundUseful = false;
+    let accumulatedContent = "";
+    const encoder = new TextEncoder();
     const customReadable = new ReadableStream({
       async start(controller) {
         try {
@@ -71,24 +101,36 @@ export async function POST(req: Request) {
               const deltaContent = (event.data.delta as any).content;
               let content = "";
               if (Array.isArray(deltaContent)) {
-                deltaContent.forEach((c: any, idx: number) => {
-                  console.log("parsed.content item", idx, c, typeof c, Object.keys(c));
-                });
                 content = deltaContent
                   .map((c: any) => {
-                    // If c.text is an object with a value property, use that
                     if (c && typeof c.text === "object" && typeof c.text.value === "string") return c.text.value;
-                    // If c.text is a string, use it
                     if (typeof c.text === "string") return c.text;
-                    // If c is a string, use it
                     if (typeof c === "string") return c;
-                    // Fallback: empty string
                     return "";
                   })
                   .join("");
               } else if (typeof deltaContent === "string") {
                 content = deltaContent;
               }
+              if (content) {
+                accumulatedContent += content;
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                // Heuristic: If the assistant says it doesn't know, mark as not useful
+                if (!/don't know|not sure|no information|no data|unable to find|I do not have/i.test(content)) {
+                  foundUseful = true;
+                }
+              }
+            }
+          }
+          // If not useful, fallback to Chat API
+          if (!foundUseful || !accumulatedContent.trim()) {
+            const fallbackCompletion = await openai.chat.completions.create({
+              model: "gpt-4o",
+              messages,
+              stream: true,
+            });
+            for await (const chunk of fallbackCompletion) {
+              const content = chunk.choices?.[0]?.delta?.content;
               if (content) {
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
               }

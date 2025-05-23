@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/sidebar"
 import type { SystemStatus } from "@/types/system-status"
 import { useThreads } from "@/hooks/useThreads"
 import { useMessages } from "@/hooks/useMessages"
+import type { Message } from "@/types/message"
 
 export function AssistantDashboard() {
   const [systemStatus, setSystemStatus] = useState<SystemStatus>({
@@ -21,18 +22,22 @@ export function AssistantDashboard() {
     loading: threadsLoading, 
     createThread, 
     renameThread, 
-    deleteThread 
+    deleteThread, 
+    fetchThreads
   } = useThreads()
 
   const { 
     messages, 
     loading: messagesLoading, 
-    addMessage 
+    addMessage,
+    fetchMessages,
+    setMessages
   } = useMessages(selectedThreadId)
 
   const handleNewChat = async () => {
     const newThread = await createThread("New Chat")
     setSelectedThreadId(newThread.id)
+    await fetchThreads(); // Refresh sidebar
   }
 
   const handleDeleteThread = async (id: string) => {
@@ -40,15 +45,18 @@ export function AssistantDashboard() {
     if (selectedThreadId === id) {
       setSelectedThreadId(undefined)
     }
+    await fetchThreads(); // Refresh sidebar
   }
 
   const handleRenameThread = async (id: string, newName: string) => {
     await renameThread(id, newName)
+    await fetchThreads(); // Refresh sidebar
   }
 
   const handleThreadNameUpdate = async (newName: string) => {
     if (selectedThreadId) {
       await renameThread(selectedThreadId, newName)
+      await fetchThreads(); // Refresh sidebar
     }
   }
 
@@ -70,7 +78,7 @@ export function AssistantDashboard() {
           <ChatInterface
             onStatusChange={setSystemStatus}
             messages={messages}
-            setMessages={() => {}} // Not needed as we use addMessage
+            setMessages={setMessages}
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
             sidebarOpen={sidebarOpen}
             onThreadNameUpdate={handleThreadNameUpdate}

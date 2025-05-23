@@ -56,74 +56,16 @@ export function ChatInterface({
   const [isProcessing, setIsProcessing] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
-  const [abortController, setAbortController] = useState<AbortController | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [abortController, setAbortController] = useState<AbortController | null>(null)
+  const [sendLocked, setSendLocked] = useState(false)
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const { toast } = useToast()
-  const [sendLocked, setSendLocked] = useState(false);
-  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
-  const prevThreadIdRef = useRef<string | undefined>(selectedThreadId);
+  const prevThreadIdRef = useRef<string | undefined>(selectedThreadId)
 
-  const debouncedSend = debounce(() => {
-    setSendLocked(true);
-    Promise.resolve(handleSendMessage()).finally(() => setSendLocked(false));
-  }, 1000);
-
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
-    }
-  }
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
-
-  // Initialize speech recognition
-  useEffect(() => {
-    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (typeof window !== 'undefined' && SpeechRecognitionAPI) {
-      const recognition = new SpeechRecognitionAPI()
-      recognitionRef.current = recognition
-      
-      if (recognitionRef.current) {
-        recognitionRef.current.continuous = true
-        recognitionRef.current.interimResults = true
-        recognitionRef.current.lang = 'en-US'
-
-        recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-          const transcript = Array.from(event.results)
-            .map(result => result[0].transcript)
-            .join('')
-          setInput(transcript)
-        }
-
-        recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
-          console.error('Speech recognition error:', event.error)
-          toast({
-            title: "Voice Input Error",
-            description: "There was an error with voice recognition. Please try again.",
-            variant: "destructive",
-          })
-          setIsRecording(false)
-        }
-
-        recognitionRef.current.onend = () => {
-          setIsRecording(false)
-        }
-      }
-    }
-
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop()
-      }
-    }
-  }, [toast])
-
-  // Helper to send a user message and get AI response
   const sendMessageAndGetAIResponse = async (userMessageContent: string) => {
     let threadId = selectedThreadId;
     // Add user message to backend if addMessage is provided
@@ -131,33 +73,9 @@ export function ChatInterface({
       await addMessage("user", userMessageContent)
     }
 
-    // Create user message with content and file if present
-    const userMessage: Message = {
-      id: uuidv4(),
-      content: userMessageContent,
-      type: selectedFile ? "file" : "text",
-      role: "user",
-      timestamp: new Date(),
-      file: selectedFile ? {
-        name: selectedFile.name,
-        type: selectedFile.type,
-        size: selectedFile.size,
-        url: URL.createObjectURL(selectedFile)
-      } : undefined
-    }
-
-    // Add user message immediately to UI
-    setMessages((prev) => {
-      const updatedMessages = [...prev]
-      updatedMessages.push(userMessage)
-      return updatedMessages
-    })
-
-    setInput("")
-    setSelectedFile(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
-    }
+    // Get the last message we just added (which contains the file content)
+    const lastMessage = messages[messages.length - 1];
+    
     setIsProcessing(true)
     setIsStreaming(true)
     onStatusChange({ status: "processing", message: "Processing request..." })
@@ -170,11 +88,12 @@ export function ChatInterface({
     const tempMessageId = uuidv4()
 
     try {
+      console.log('Sending to AI:', lastMessage.content);
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          messages: [...messages, userMessage],
+          messages: [...messages],
           detailedMode: true
         }),
         signal: controller.signal
@@ -249,7 +168,6 @@ export function ChatInterface({
       if (addMessage) {
         await addMessage("assistant", accumulatedContent)
       }
-
     } catch (error: unknown) {
       if (error instanceof Error && error.name === 'AbortError') {
         // Don't remove the message on abort, just stop streaming
@@ -271,6 +189,63 @@ export function ChatInterface({
       onStatusChange({ status: "connected", message: "System ready" })
     }
   };
+
+  const debouncedSend = debounce(() => {
+    setSendLocked(true)
+    Promise.resolve(handleSendMessage()).finally(() => setSendLocked(false))
+  }, 1000)
+
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  // Initialize speech recognition
+  useEffect(() => {
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (typeof window !== 'undefined' && SpeechRecognitionAPI) {
+      const recognition = new SpeechRecognitionAPI()
+      recognitionRef.current = recognition
+      
+      if (recognitionRef.current) {
+        recognitionRef.current.continuous = true
+        recognitionRef.current.interimResults = true
+        recognitionRef.current.lang = 'en-US'
+
+        recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+          const transcript = Array.from(event.results)
+            .map(result => result[0].transcript)
+            .join('')
+          setInput(transcript)
+        }
+
+        recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
+          console.error('Speech recognition error:', event.error)
+          toast({
+            title: "Voice Input Error",
+            description: "There was an error with voice recognition. Please try again.",
+            variant: "destructive",
+          })
+          setIsRecording(false)
+        }
+
+        recognitionRef.current.onend = () => {
+          setIsRecording(false)
+        }
+      }
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+      }
+    }
+  }, [toast])
 
   useEffect(() => {
     // If a new thread was just created and there's a pending message, send it
@@ -319,32 +294,125 @@ export function ChatInterface({
   }
 
   const handleSendMessage = async () => {
-    if ((!input.trim() && !selectedFile) || isProcessing) return
+    if ((!input.trim() && !selectedFile) || isProcessing) return;
 
-    let threadId = selectedThreadId;
-    // If no thread exists, create one with the first message as the name
-    if (!threadId && createThread && setSelectedThreadId) {
-      const threadName = input.trim().slice(0, 30) + (input.trim().length > 30 ? '...' : '')
-      const newThread = await createThread(threadName)
-      threadId = newThread.id
-      if (threadId && setSelectedThreadId) {
-        setSelectedThreadId(threadId)
+    let userMessage: Message;
+    let fullMessage = input.trim();
+
+    if (selectedFile) {
+      // 1. Read the file content
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      let fileText = "";
+      try {
+        const res = await fetch('/api/read-file', { method: 'POST', body: formData });
+        if (res.ok) {
+          const { text } = await res.json();
+          fileText = text;
+        }
+      } catch (e) {
+        // handle error
       }
-      // Optionally update thread name in parent
-      if (onThreadNameUpdate) {
-        onThreadNameUpdate(threadName)
+      // 2. Construct the message content
+      fullMessage = `Attached file (${selectedFile.name}):\n\n${fileText}\n\nUser query: ${input.trim()}`;
+      userMessage = {
+        id: uuidv4(),
+        content: fullMessage,
+        type: "file",
+        role: "user",
+        timestamp: new Date(),
+        file: {
+          name: selectedFile.name,
+          type: selectedFile.type,
+          size: selectedFile.size,
+          url: URL.createObjectURL(selectedFile),
+        },
+      };
+    } else {
+      userMessage = {
+        id: uuidv4(),
+        content: fullMessage,
+        type: "text",
+        role: "user",
+        timestamp: new Date(),
+      };
+    }
+    setMessages((prev) => [...prev, userMessage]);
+
+    // 2. Prepare the message history to send to the AI
+    const messageHistory = [...messages, userMessage];
+
+    // 3. Call the AI endpoint
+    setIsProcessing(true);
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: messageHistory, detailedMode: true }),
+      });
+
+      if (!response.ok) throw new Error("AI API error");
+
+      // Stream the AI response and accumulate content
+      let accumulatedContent = "";
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      while (reader && !done) {
+        const { value, done: streamDone } = await reader.read();
+        done = streamDone;
+        if (value) {
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n");
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const data = line.slice(6);
+              if (data === "[DONE]") continue;
+              try {
+                const parsed = JSON.parse(data);
+                let newContent = "";
+                if (Array.isArray(parsed.content)) {
+                  newContent = parsed.content
+                    .filter((c: any) => typeof c.text === "string")
+                    .map((c: any) => c.text)
+                    .join("");
+                } else if (typeof parsed.content === "string") {
+                  newContent = parsed.content;
+                }
+                if (newContent) {
+                  accumulatedContent += newContent;
+                  // Optionally, you can show streaming updates here
+                }
+              } catch (e) {
+                // Ignore parse errors for non-JSON lines
+              }
+            }
+          }
+        }
       }
-      setPendingMessage(input.trim()); // Store the message to send after thread is ready
+
+      // 4. Add the AI's response to the UI
+      const aiMessage: Message = {
+        id: uuidv4(),
+        content: accumulatedContent || "[No response]",
+        type: "text",
+        role: "assistant",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, aiMessage]);
+    } catch (error) {
+      // Handle error (show toast, etc.)
+      toast({
+        title: "Error",
+        description: "Failed to get AI response.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
       setInput("");
       setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-      return; // Wait for useEffect to send the message
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
-
-    // Otherwise, send the message and get AI response as usual
-    await sendMessageAndGetAIResponse(input.trim());
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

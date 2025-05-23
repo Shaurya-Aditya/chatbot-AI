@@ -1,14 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
+  experimental: {
+    serverComponentsExternalPackages: [],
   },
-  typescript: {
-    ignoreBuildErrors: true,
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push(/^pdf-parse$/); // exclude pdf-parse from server bundle
+    }
+    return config;
   },
-  images: {
-    unoptimized: true,
-  },
-}
+};
 
-export default nextConfig
+export default nextConfig;
