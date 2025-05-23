@@ -6,8 +6,8 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY!
 );
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function GET(req: NextRequest, context: { params: { id: string } }) {
+  const { id } = context.params;
   console.log('GET /api/threads/[id]/messages - Fetching messages for thread:', id);
   const { data, error } = await supabase
     .from('messages')
@@ -22,8 +22,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json(data);
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function POST(req: NextRequest, context: { params: { id: string } }) {
+  const { id } = context.params;
   const body = await req.json();
   console.log('POST /api/threads/[id]/messages - Creating message:', { id, body });
   const { data, error } = await supabase
