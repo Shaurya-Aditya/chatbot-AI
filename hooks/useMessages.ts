@@ -40,5 +40,6 @@ export function useMessages(threadId: string | undefined) {
     loading,
     fetchMessages,
     addMessage,
+    setMessages,
   };
 } 

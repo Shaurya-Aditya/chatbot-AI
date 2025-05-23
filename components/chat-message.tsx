@@ -178,6 +178,12 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
   const renderMessageContent = () => {
     if (message.type === "file" && message.file) {
+      // Extract the user query from the message content
+      let userQuery = "";
+      const match = message.content.match(/User query:([\s\S]*)$/);
+      if (match) {
+        userQuery = match[1].trim();
+      }
       return (
         <div className="flex flex-col gap-2 w-full">
           <div className="flex items-center gap-2">
@@ -189,22 +195,30 @@ export function ChatMessage({ message }: ChatMessageProps) {
               )}>
                 {message.file.name}
               </span>
-              <span className={cn("text-xs", "text-black/70")}>
-                {formatFileSize(message.file.size)}
-              </span>
+              <span className={cn("text-xs", "text-black/70")}>{formatFileSize(message.file.size)}</span>
             </div>
+            <a
+              href={message.file.url}
+              download={message.file.name}
+              className="ml-2 text-xs text-blue-600 underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Download
+            </a>
           </div>
           {renderFilePreview()}
-          {message.content !== `Attached file: ${message.file.name}` && (
+          {/* Only show the user query, not the full file content */}
+          {userQuery && (
             <div className={cn(
               "mt-2 whitespace-pre-wrap break-words",
-              "text-black w-full"
+              isUser ? "text-white" : "text-black dark:text-black"
             )}>
-              {removeSources(message.content)}
+              {userQuery}
             </div>
           )}
         </div>
-      )
+      );
     }
     return (
       <div className={cn(
