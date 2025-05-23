@@ -1,3 +1,4 @@
+
 "use client"
 
 import type React from "react"
@@ -402,38 +403,21 @@ export function ChatInterface({
   }
 
   return (
-    <div className="flex flex-col h-full chat-background">
-      {/* Chat Header */}
-      <div className="border-b border-border p-4 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="flex flex-col h-full chat-background relative">
+      {/* Chat Header - Fixed position */}
+      <div className="fixed top-0 left-0 right-0 border-b border-border p-4 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-40">
+        {/* Logo on the left */}
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggleSidebar}
-            className="md:hidden"
-          >
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle sidebar</span>
-          </Button>
-          {!sidebarOpen && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleSidebar}
-              className="hidden md:flex"
-            >
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Open sidebar</span>
-            </Button>
-          )}
+          <img src="/light.webp" alt="Logo" className="h-8 w-auto" />
         </div>
         <div className="flex-1" />
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-w-2 scrollbar-track-blue-lighter scrollbar-thumb-blue scrollbar-thumb-rounded">
+      {/* Messages Container - Fixed position below header */}
+      <div className="flex-1 overflow-y-auto p-4 pt-20 pb-24 space-y-4">
         <div className="max-w-3xl mx-auto w-full">
-          {messages.map((message) => (
-            <div key={message.id} className="mb-6">
+          {messages.map((message, idx) => (
+            <div key={message.id} className={idx === 0 ? "" : "mb-6"}>
               <ChatMessage message={message} />
             </div>
           ))}
@@ -441,7 +425,8 @@ export function ChatInterface({
         </div>
       </div>
 
-      <div className="border-t border-border p-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      {/* Input Container - Fixed position at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 border-t border-border p-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-40">
         {isProcessing && (
           <div className="flex items-center justify-center text-sm text-muted-foreground mb-2">
             <Loader2 className="h-3 w-3 animate-spin mr-1" />
@@ -477,7 +462,7 @@ export function ChatInterface({
             ref={fileInputRef}
             onChange={handleFileSelect}
             className="hidden"
-            accept=".pdf,.txt,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.csv"
+            accept=".pdf,.txt,.doc,.docx"
           />
 
           <Textarea
@@ -490,17 +475,7 @@ export function ChatInterface({
           />
 
           <div className="absolute right-3 bottom-3 flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleAttachFile}
-              disabled={isProcessing}
-              title="Attach file"
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <Paperclip className="h-4 w-4" />
-              <span className="sr-only">Attach file</span>
-            </Button>
+            
 
             <Button 
               variant="ghost" 
