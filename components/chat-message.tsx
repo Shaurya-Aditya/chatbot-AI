@@ -3,7 +3,7 @@
 import { useState, useRef } from "react"
 import type { Message } from "@/types/message"
 import { Button } from "@/components/ui/button"
-import { File, FileText, FileSpreadsheet, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Highlighter } from "lucide-react"
+import { File, FileText, FileSpreadsheet, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Highlighter, Image, Download } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
@@ -57,10 +57,14 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const getFileIcon = (fileType: string) => {
     if (fileType === "application/pdf") {
       return <File className="h-4 w-4 text-red-500" />
-    } else if (fileType === "text/plain") {
+    } else if (fileType === "text/plain" || fileType === "text/csv") {
       return <FileText className="h-4 w-4 text-blue-500" />
-    } else if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-      return <FileSpreadsheet className="h-4 w-4 text-blue-700" />
+    } else if (fileType.includes("word") || fileType.includes("document")) {
+      return <FileText className="h-4 w-4 text-blue-700" />
+    } else if (fileType.includes("excel") || fileType.includes("spreadsheet")) {
+      return <FileSpreadsheet className="h-4 w-4 text-green-600" />
+    } else if (fileType.includes("image")) {
+      return <Image className="h-4 w-4 text-purple-500" />
     }
     return <File className="h-4 w-4" />
   }
@@ -123,6 +127,55 @@ export function ChatMessage({ message }: ChatMessageProps) {
     }
   }
 
+  const renderFilePreview = () => {
+    if (!message.file) return null;
+
+    const fileType = message.file.type;
+    
+    if (fileType.includes("image")) {
+      return (
+        <div className="mt-2">
+          <img 
+            src={message.file.url} 
+            alt={message.file.name}
+            className="max-w-full h-auto rounded-lg"
+            style={{ maxHeight: "300px" }}
+          />
+        </div>
+      );
+    }
+
+    if (fileType === "application/pdf") {
+      return (
+        <div className="mt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePdfPreview}
+            className="flex items-center gap-2"
+          >
+            <File className="h-4 w-4" />
+            Preview PDF
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownload}
+          className="flex items-center gap-2"
+        >
+          <Download className="h-4 w-4" />
+          Download File
+        </Button>
+      </div>
+    );
+  }
+
   const renderMessageContent = () => {
     if (message.type === "file" && message.file) {
       return (
@@ -141,6 +194,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
               </span>
             </div>
           </div>
+          {renderFilePreview()}
           {message.content !== `Attached file: ${message.file.name}` && (
             <div className={cn(
               "mt-2 whitespace-pre-wrap break-words",

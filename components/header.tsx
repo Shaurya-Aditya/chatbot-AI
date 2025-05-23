@@ -34,8 +34,8 @@ export function Header({ systemStatus, toggleSidebar }: HeaderProps) {
   }
 
   return (
-    <header className="fixed top-0 left-0 w-full z-40 bg-background h-16">
-      <div className="flex h-16 items-center px-4 md:px-6">
+    <header className="fixed top-0 left-0 w-full z-50 bg-background">
+      <div className="flex h-16 items-center px-4 md:px-6 border-b border-border">
         <div className="flex items-center flex-shrink-0">
           <img
             src={theme === 'dark' ? '/dark.webp' : '/light.webp'}

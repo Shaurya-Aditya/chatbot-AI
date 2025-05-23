@@ -53,25 +53,24 @@ export function AssistantDashboard() {
   }
 
   return (
-    <>
+    <div className="flex h-screen flex-col">
       <Header systemStatus={systemStatus} toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-      <div className="border-b border-border w-full" />
-      <Sidebar
-        isOpen={sidebarOpen}
-        onNewChat={handleNewChat}
-        threads={threads}
-        selectedThreadId={selectedThreadId}
-        setSelectedThreadId={setSelectedThreadId}
-        onRenameThread={handleRenameThread}
-        onDeleteThread={handleDeleteThread}
-        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-      />
-      <div className="pt-4 h-screen">
-        <main className="h-full">
+      <div className="flex flex-1 overflow-hidden relative">
+        <Sidebar
+          isOpen={sidebarOpen}
+          onNewChat={handleNewChat}
+          threads={threads}
+          selectedThreadId={selectedThreadId}
+          setSelectedThreadId={setSelectedThreadId}
+          onRenameThread={handleRenameThread}
+          onDeleteThread={handleDeleteThread}
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        />
+        <main className="flex-1 overflow-hidden transition-all duration-300">
           <ChatInterface
             onStatusChange={setSystemStatus}
             messages={messages}
-            setMessages={() => {}}
+            setMessages={() => {}} // Not needed as we use addMessage
             onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
             sidebarOpen={sidebarOpen}
             onThreadNameUpdate={handleThreadNameUpdate}
@@ -82,6 +81,6 @@ export function AssistantDashboard() {
           />
         </main>
       </div>
-    </>
+    </div>
   )
 }
