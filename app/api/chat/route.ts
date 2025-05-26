@@ -1,3 +1,9 @@
+/**
+ * Chat API endpoint that handles both file-based and general chat interactions.
+ * Supports two modes:
+ * 1. File-based chat: Uses GPT-4 to analyze attached file content
+ * 2. General chat: Uses Assistant API with retrieval capabilities, falling back to Chat API if needed
+ */
 import { OpenAI } from "openai"
 
 // Allow responses up to 30 seconds
@@ -132,6 +138,25 @@ export async function POST(req: Request) {
             for await (const chunk of fallbackCompletion) {
               const content = chunk.choices?.[0]?.delta?.content;
               if (content) {
+                accumulatedContent += content;
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+                // Heuristic: If the assistant says it doesn't know, mark as not useful
+                if (!/don't know|not sure|no information|no data|unable to find|I do not have/i.test(content)) {
+                  foundUseful = true;
+                }
+              }
+            }
+          }
+          // If not useful, fallback to Chat API
+          if (!foundUseful || !accumulatedContent.trim()) {
+            const fallbackCompletion = await openai.chat.completions.create({
+              model: "gpt-4o",
+              messages,
+              stream: true,
+            });
+            for await (const chunk of fallbackCompletion) {
+              const content = chunk.choices?.[0]?.delta?.content;
+              if (content) {
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
               }
             }
@@ -156,3 +181,4 @@ export async function POST(req: Request) {
     return new Response(JSON.stringify({ error: "Failed to process your request" }), { status: 500 })
   }
 }
+

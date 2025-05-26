@@ -1,3 +1,7 @@
+/**
+ * API endpoint for managing individual documents in the vector store.
+ * Provides DELETE operation to remove documents from both vector store and OpenAI files.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
@@ -6,10 +10,10 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
-    const fileId = params.id;
+    const fileId = context.params.id;
     await openai.vectorStores.files.del(VECTOR_STORE_ID, fileId);
     await openai.files.del(fileId);
     return NextResponse.json({ success: true }, { status: 200 });
@@ -20,3 +24,5 @@ export async function DELETE(
     );
   }
 }
+
+

@@ -1,3 +1,8 @@
+/**
+ * API endpoint for managing the document collection in the vector store.
+ * Provides GET operation to list all documents with their metadata.
+ * Fetches and combines data from both vector store and OpenAI files endpoints.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 

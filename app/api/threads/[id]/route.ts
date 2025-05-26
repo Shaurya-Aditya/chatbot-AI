@@ -1,3 +1,8 @@
+/**
+ * API endpoint for managing individual chat threads.
+ * Provides CRUD operations (GET, PUT, DELETE) for a specific thread by ID.
+ * Uses Supabase for data persistence.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 

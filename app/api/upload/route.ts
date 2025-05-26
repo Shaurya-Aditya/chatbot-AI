@@ -1,3 +1,8 @@
+/**
+ * API endpoint for handling file uploads.
+ * Processes multiple files and returns metadata.
+ * Currently returns placeholder data, structured for future vector store integration.
+ */
 import { type NextRequest, NextResponse } from "next/server"
 
 export async function POST(req: NextRequest) {

@@ -1,3 +1,8 @@
+/**
+ * API endpoint for managing chat threads collection.
+ * Provides operations to list all threads and create new threads.
+ * Uses Supabase for data persistence with enhanced error handling and logging.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
