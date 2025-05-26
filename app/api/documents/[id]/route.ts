@@ -18,5 +18,11 @@ export async function DELETE(
       { error: 'Failed to delete file', details: e.message || e.toString() },
       { status: 500 }
     );
+    return NextResponse.json(
+      { error: 'Failed to delete file', details: e.message || e.toString() },
+      { status: 500 }
+    );
   }
 }
+
+
