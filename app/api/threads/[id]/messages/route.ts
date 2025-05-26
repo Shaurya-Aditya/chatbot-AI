@@ -1,3 +1,8 @@
+/**
+ * API endpoint for managing messages within a specific chat thread.
+ * Provides operations to fetch and create messages for a given thread ID.
+ * Uses Supabase for data persistence and maintains message ordering.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 

@@ -1,3 +1,8 @@
+/**
+ * API endpoint for uploading files to OpenAI's vector store.
+ * Handles file upload, vector store integration, and maintains a local mapping
+ * of vector store file IDs to original file IDs for reference.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { promises as fs } from 'fs';

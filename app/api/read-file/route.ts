@@ -1,3 +1,8 @@
+/**
+ * API endpoint for reading and parsing various file types.
+ * Supports PDF, text, and CSV files.
+ * Extracts text content and returns it in a standardized format.
+ */
 import { NextRequest } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';

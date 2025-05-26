@@ -1,3 +1,9 @@
+/**
+ * Chat API endpoint that handles both file-based and general chat interactions.
+ * Supports two modes:
+ * 1. File-based chat: Uses GPT-4 to analyze attached file content
+ * 2. General chat: Uses Assistant API with retrieval capabilities, falling back to Chat API if needed
+ */
 import { OpenAI } from "openai"
 
 // Allow responses up to 30 seconds

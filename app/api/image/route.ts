@@ -1,3 +1,8 @@
+/**
+ * API endpoint for image generation using DALL-E.
+ * Currently returns a placeholder image, but is structured to integrate with DALL-E 3.
+ * Handles prompt validation and error cases.
+ */
 import { type NextRequest, NextResponse } from "next/server"
 import OpenAI from "openai"
 

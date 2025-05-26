@@ -1,3 +1,8 @@
+/**
+ * API endpoint for downloading documents from the vector store.
+ * Retrieves original files using the vector store file ID mapping.
+ * Handles file metadata and content streaming for downloads.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { promises as fs } from 'fs';

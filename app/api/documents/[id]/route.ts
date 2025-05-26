@@ -1,3 +1,7 @@
+/**
+ * API endpoint for managing individual documents in the vector store.
+ * Provides DELETE operation to remove documents from both vector store and OpenAI files.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 

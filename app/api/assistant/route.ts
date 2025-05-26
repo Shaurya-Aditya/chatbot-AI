@@ -1,3 +1,8 @@
+/**
+ * API endpoint for OpenAI Assistant interactions.
+ * Handles thread creation and message streaming with the Assistant API.
+ * Supports both new conversations and continuing existing threads.
+ */
 import { AssistantResponse } from "ai"
 import OpenAI from "openai"
 
