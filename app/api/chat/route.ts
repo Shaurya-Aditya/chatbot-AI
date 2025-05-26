@@ -68,12 +68,9 @@ export async function POST(req: Request) {
 
     // --- No file attached: Use Assistant API with retrieval, fallback to Chat API if needed ---
     // Create a thread
-    // --- No file attached: Use Assistant API with retrieval, fallback to Chat API if needed ---
-    // Create a thread
     const thread = await openai.beta.threads.create({})
     const threadId = thread.id
 
-    // Add all messages to the thread
     // Add all messages to the thread
     for (const msg of messages) {
       await openai.beta.threads.messages.create(threadId, {
@@ -83,14 +80,10 @@ export async function POST(req: Request) {
     }
 
     // Run the assistant with retrieval
-    // Run the assistant with retrieval
     const runStream = openai.beta.threads.runs.stream(threadId, {
       assistant_id: process.env.ASSISTANT_ID || "",
     })
 
-    let foundUseful = false;
-    let accumulatedContent = "";
-    const encoder = new TextEncoder();
     let foundUseful = false;
     let accumulatedContent = "";
     const encoder = new TextEncoder();
