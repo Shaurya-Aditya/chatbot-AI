@@ -10,10 +10,10 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ): Promise<NextResponse> {
   try {
-    const fileId = params.id;
+    const fileId = context.params.id;
     await openai.vectorStores.files.del(VECTOR_STORE_ID, fileId);
     await openai.files.del(fileId);
     return NextResponse.json({ success: true }, { status: 200 });
